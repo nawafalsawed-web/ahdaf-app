@@ -204,8 +204,7 @@ function renderClients(){
 
   if(currentSearch){
     const q = currentSearch.trim();
-    clients = clients.filter(c =>
-      (c.name||'').includes(q) || (c.company||'').includes(q) || (c.sector||'').includes(q));
+    clients = clients.filter(c => (c.name||'').includes(q) || (c.company||'').includes(q));
   }
 
   if(store.clients.length === 0){
@@ -213,35 +212,23 @@ function renderClients(){
       <div class="empty">
         <span class="emoji">👥</span>
         <h3>لا يوجد عملاء بعد</h3>
-        <p>أضف أول عميل وحط له رابط قروب الواتساب،<br>ويصير له زر يفتح القروب مباشرة.</p>
+        <p>أضف أول عميل باسم الشركة أو الجهة.</p>
         <button class="cta" onclick="openClientForm()">+ إضافة أول عميل</button>
       </div>`;
     return;
   }
 
-  // تجميع حسب القطاع (القروبات)
-  const groups = {};
-  clients.forEach(c=>{ const g=c.sector||'أخرى'; (groups[g]=groups[g]||[]).push(c); });
-  const orderedSectors = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
-
   let html = `
     <div class="section-head">
       <h1>العملاء</h1>
-      <span class="count">${store.clients.length} عميل · ${Object.keys(groups).length} قطاع</span>
+      <span class="count">${store.clients.length} عميل</span>
     </div>`;
 
   if(clients.length===0){
     html += `<div class="empty"><span class="emoji">🔍</span><h3>ما فيه نتائج</h3><p>جرّب كلمة ثانية.</p></div>`;
+  }else{
+    clients.forEach(c=>{ html += clientCard(c); });
   }
-
-  orderedSectors.forEach(sector=>{
-    html += `<div class="group-label">
-        <span class="gname">${esc(sector)}</span>
-        <span class="gcount">${groups[sector].length}</span>
-        <span class="gline"></span>
-      </div>`;
-    groups[sector].forEach(c=>{ html += clientCard(c); });
-  });
 
   view.innerHTML = html;
 }
@@ -261,7 +248,7 @@ function avatarHTML(c){
   return `<div class="avatar" style="background:${colorFor(c)}">${esc(initials(c.name))}</div>`;
 }
 function clientCard(c){
-  const sub = [c.company, c.phone ? (c.dial||'+966')+' '+c.phone : ''].filter(Boolean).join(' · ');
+  const sub = [c.company, c.phone ? (c.dial||'+966')+' '+c.phone : ''].filter(Boolean).join(' · ') || '';
   return `
     <div class="client-card">
       ${avatarHTML(c)}
@@ -288,13 +275,8 @@ function openClientForm(editId){
     <p class="sub">${editing?'حدّث بيانات العميل.':'ضيف العميل، وحط له رابط قروب الواتساب.'}</p>
 
     <div class="field">
-      <label>اسم العميل *</label>
-      <input id="f_name" value="${esc(c.name||'')}" placeholder="مثال: أحمد المالكي" autocomplete="off">
-    </div>
-
-    <div class="field">
-      <label>الجهة / الشركة</label>
-      <input id="f_company" value="${esc(c.company||'')}" placeholder="مثال: بهارات خنينة" autocomplete="off">
+      <label>اسم الشركة / الجهة *</label>
+      <input id="f_name" value="${esc(c.name||c.company||'')}" placeholder="مثال: بهارات خنينة" autocomplete="off">
     </div>
 
     <div class="field">
@@ -329,11 +311,6 @@ function openClientForm(editId){
       <div class="hint">الزر ينشئ القروب من رقمك عبر البوت ويجيب الرابط تلقائياً. أو الصقه يدوياً.
         <button type="button" id="f_grouphelp" style="color:var(--purple);font-weight:500;background:none;padding:0;margin-top:4px">طريقة الإنشاء اليدوي</button>
       </div>
-    </div>
-
-    <div class="field">
-      <label>القطاع (للتنظيم)</label>
-      <select id="f_sector">${SECTORS.map(s=>`<option ${s===(c.sector||'تجارة')?'selected':''}>${s}</option>`).join('')}</select>
     </div>
 
     <div class="field">
@@ -419,12 +396,10 @@ function openClientForm(editId){
     }
     const payload={
       name:$('#f_name').value.trim(),
-      company:$('#f_company').value.trim(),
       logo:pickedLogo,
       dial:$('#f_dial').value,
       phone:$('#f_phone').value.trim().replace(/\D/g,''),
       groupLink,
-      sector:$('#f_sector').value,
       color:pickedColor,
     };
     if(editing){
@@ -432,7 +407,7 @@ function openClientForm(editId){
       toast('تم حفظ التعديلات');
     }else{
       store.addClient({id:uid(), createdAt:Date.now(), ...payload});
-      toast(groupLink ? `أُضيف ${payload.name} وربطنا قروبه ✓` : `أُضيف ${payload.name} لقطاع «${payload.sector}»`);
+      toast(`أُضيف ${payload.name} ✓`);
     }
     sheet.close(); renderClients();
   });
@@ -533,7 +508,7 @@ function clientMenu(id){
   const c = store.clients.find(x=>x.id===id); if(!c) return;
   sheet.open(`
     <h2>${esc(c.name)}</h2>
-    <p class="sub">${esc(c.sector||'أخرى')}${c.company?' · '+esc(c.company):''}</p>
+    ${c.phone?`<p class="sub">${esc((c.dial||'+966')+' '+c.phone)}</p>`:''}
     <div class="action-list">
       ${c.groupLink?`<a class="action-item" href="${esc(c.groupLink)}" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 18.5a5.5 5.5 0 0111 0"/><path d="M16 5.4a3 3 0 010 5.6M20.5 18.5a5.5 5.5 0 00-3.6-5.15"/></svg>
