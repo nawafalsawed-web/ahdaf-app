@@ -1,0 +1,15 @@
+# أسرار وجلسات البوت — لا تُرفع أبداً
+bot/.wwebjs_auth/
+bot/.wwebjs_cache/
+bot/projecto.config.json
+bot/projecto-data.json
+bot/projecto-shots/
+bot/*.log
+
+# تبعيات
+node_modules/
+bot/node_modules/
+
+# نظام
+.DS_Store
+*.log

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4C0192">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="أهداف">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>أهداف · إدارة العمل</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ===== شريط علوي ===== -->
+  <header class="topbar">
+    <span class="brand-name">أهداف</span>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="searchToggle" aria-label="بحث">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" aria-label="إعدادات" onclick="openSettings()">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="11" y2="7"/><line x1="15" y1="7" x2="20" y2="7"/><circle cx="13" cy="7" r="2.1"/><line x1="4" y1="12" x2="7" y2="12"/><line x1="11" y1="12" x2="20" y2="12"/><circle cx="9" cy="12" r="2.1"/><line x1="4" y1="17" x2="13" y2="17"/><line x1="17" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="search-wrap" id="searchWrap" hidden>
+    <input type="search" id="searchInput" placeholder="ابحث عن عميل أو قطاع…" autocomplete="off">
+  </div>
+
+  <!-- ===== المحتوى ===== -->
+  <main id="view"></main>
+
+  <!-- ===== شريط سفلي للتنقل ===== -->
+  <nav class="tabbar">
+    <button class="tab active" data-tab="clients">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.2 19a5.8 5.8 0 0111.6 0"/><path d="M16.5 5.3a3.2 3.2 0 010 5.9M21 19a5.8 5.8 0 00-3.8-5.4"/></svg>
+      <span>العملاء</span>
+    </button>
+    <button class="tab" data-tab="proposals">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg>
+      <span>العروض</span>
+    </button>
+    <button class="tab" data-tab="tasks">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 5.5l1 1 1.8-1.9M4 11.5l1 1 1.8-1.9M4 17.5l1 1 1.8-1.9"/></svg>
+      <span>المهام</span>
+    </button>
+    <a class="tab" href="influencers.html">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/><circle cx="18.5" cy="6" r="1.6"/><circle cx="5.5" cy="6" r="1.6"/></svg>
+      <span>المؤثرين</span>
+    </a>
+  </nav>
+
+  <!-- ===== زر الإضافة العائم ===== -->
+  <button class="fab" id="fab" aria-label="إضافة">
+    <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+  </button>
+
+  <!-- ===== نافذة منبثقة عامة ===== -->
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-handle"></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+
+  <script src="assets/vendor/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

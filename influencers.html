@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة المؤثرين — أهداف</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  /* خطوط أهداف */
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Medium.ttf") format("truetype");font-weight:500;font-display:swap}
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --bg:#f6f5f8;--panel:#ffffff;--panel-2:#fafafb;--ink:#1d1d22;--muted:#7a7a85;--faint:#a59f93;
+    --line:#ececef;--line-strong:#e3e1e8;--accent:#4C0192;--accent-soft:#f3edfa;--accent-ink:#3a0170;
+    --gold:#b8893b;--gold-soft:#f6efda;--pos:#1f9d55;--pos-soft:#e9f6ee;--neg:#c0392b;--neg-soft:#fdecea;
+    --snap:#caa400;--snap-soft:#fbf2cf;--x:#2b2b2b;--x-soft:#e9e9e9;--tiktok:#0b7d8a;--tiktok-soft:#e0f0f2;
+    --insta:#b8336a;--insta-soft:#f7e4ec;--yt:#b3261e;--yt-soft:#f7e3e1;--wa:#25D366;
+    --blue:#2563a8;--blue-soft:#e3edf7;--amber:#b07d12;--amber-soft:#f7eed8;--purple:#4C0192;--purple-soft:#f3edfa;
+    --shadow:0 2px 14px rgba(40,10,80,.06);--radius:16px;
+  }
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{background:radial-gradient(1200px 500px at 90% -10%,rgba(76,1,146,.05),transparent 60%),var(--bg);color:var(--ink);font-family:"Saudi Serif",-apple-system,BlinkMacSystemFont,"SF Arabic","Segoe UI",'Tahoma',sans-serif;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .num{font-family:'IBM Plex Mono','IBM Plex Sans Arabic',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .wrap{max-width:1320px;margin:0 auto;padding:22px 22px 60px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+  .brand h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em;display:flex;align-items:center;gap:11px;cursor:pointer}
+  .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .brand p{margin:5px 2px 0;color:var(--muted);font-size:12.5px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-size:13px;font-weight:500;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+  .btn{padding:9px 14px;background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);box-shadow:var(--shadow)}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.primary:hover{background:var(--accent-ink)}
+  .btn.wa{background:var(--wa);color:#fff;border-color:var(--wa)}.btn.wa:hover{filter:brightness(.94)}
+  .btn.sm{padding:6px 11px;font-size:12px}.btn.dis{opacity:.4;cursor:not-allowed}
+  .btn svg{width:16px;height:16px}
+  .nav{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--line-strong);flex-wrap:wrap}
+  .navi{padding:11px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:600;border-radius:0;margin-bottom:-1px}
+  .navi.on{color:var(--accent);border-bottom-color:var(--accent)}.navi:hover{color:var(--accent)}
+  .view{display:none}.view.on{display:block;animation:fade .2s}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* cards / stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:3px;background:var(--accent)}
+  .stat.g::before{background:var(--gold)}.stat.p::before{background:var(--pos)}.stat.b::before{background:var(--tiktok)}
+  .stat .lbl{color:var(--muted);font-size:12px;font-weight:500}.stat .val{font-size:22px;font-weight:700;margin-top:5px}.stat .sub{font-size:11.5px;color:var(--faint);margin-top:2px}
+  .actions-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:22px}
+  .acard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);cursor:pointer;transition:.15s;display:flex;gap:14px;align-items:center}
+  .acard:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .acard .ic{width:46px;height:46px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .acard.gold .ic{background:var(--gold-soft);color:var(--gold)}.acard.blue .ic{background:var(--blue-soft);color:var(--blue)}.acard.pur .ic{background:var(--purple-soft);color:var(--purple)}
+  .acard .ic svg{width:24px;height:24px}
+  .acard h3{margin:0;font-size:16px;font-weight:700}.acard p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+  .section-h{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 12px}
+  .section-h h2{font-size:17px;font-weight:700;margin:0}
+  /* toolbar / filters */
+  .toolbar{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin-bottom:16px}
+  .search-row{display:flex;gap:11px;flex-wrap:wrap;align-items:center}
+  .search{flex:1;min-width:200px;position:relative}
+  .search input{width:100%;padding:11px 40px 11px 13px;border:1px solid var(--line-strong);border-radius:10px;font-family:inherit;font-size:14px;background:var(--panel-2);color:var(--ink)}
+  .search input:focus{outline:none;border-color:var(--accent);background:#fff}
+  .search svg{position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--faint)}
+  select.sortsel{padding:11px 12px;border:1px solid var(--line-strong);border-radius:10px;font-family:inherit;font-size:13px;background:var(--panel-2);color:var(--ink);cursor:pointer}
+  select.sortsel:focus{outline:none;border-color:var(--accent)}
+  .dir-btn{padding:11px 13px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:10px;color:var(--muted)}
+  .dir-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+  .fgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .fgroup .glabel{font-size:11.5px;color:var(--faint);font-weight:600;margin-inline-end:2px}
+  .chip{padding:6px 12px;border-radius:20px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .chip.on.gold{background:var(--gold);border-color:var(--gold)}
+  .sep{width:1px;height:20px;background:var(--line);margin:0 3px}
+  .price-range{display:flex;align-items:center;gap:6px}
+  .price-range input{width:74px;padding:8px 9px;border:1px solid var(--line-strong);border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--panel-2)}
+  .price-range input:focus{outline:none;border-color:var(--accent)}.price-range span{color:var(--faint);font-size:12px}
+  /* table */
+  .tablecard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:1020px}
+  thead th{position:sticky;top:0;background:var(--panel-2);text-align:right;font-size:12px;font-weight:600;color:var(--muted);padding:12px 13px;border-bottom:1px solid var(--line-strong);white-space:nowrap;cursor:pointer;user-select:none}
+  thead th:hover{color:var(--accent)}thead th .arrow{font-size:10px;color:var(--accent);margin-inline-start:3px}
+  thead th.noSort{cursor:default}thead th.noSort:hover{color:var(--muted)}
+  tbody td{padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}tbody tr{transition:background .12s}tbody tr:hover{background:var(--panel-2)}
+  .iname{font-weight:600;font-size:14px}
+  .isub{font-size:11px;color:var(--faint);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .inotes{font-size:11.5px;color:var(--muted);margin-top:3px;max-width:230px}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-snap{background:var(--snap-soft);color:#7a6400}.b-x{background:var(--x-soft);color:var(--x)}.b-tiktok{background:var(--tiktok-soft);color:#08606b}.b-insta{background:var(--insta-soft);color:#8e2453}.b-yt{background:var(--yt-soft);color:#8c1d16}.b-other{background:var(--accent-soft);color:var(--accent-ink)}
+  .b-mini{font-size:10px;padding:2px 7px;border-radius:5px}
+  .cat-tag{font-size:11px;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);padding:3px 8px;border-radius:6px;white-space:nowrap;display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .tier-tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;white-space:nowrap}
+  .t-mega{background:#efe7f7;color:#5b3a8c}.t-macro{background:#e2eef7;color:#1f5d8c}.t-mid{background:#eef4e6;color:#4a6b1f}.t-small{background:#f7f0e2;color:#8c6b1f}.t-micro{background:#f0eeec;color:var(--muted)}
+  .cat-empty{color:var(--faint);font-size:12px}
+  .price{font-size:14px;font-weight:600}.price.empty{color:var(--faint);font-weight:400}
+  .fol{font-size:13px;font-weight:600}
+  .campcount{font-size:10.5px;background:var(--accent-soft);color:var(--accent-ink);padding:2px 7px;border-radius:5px;font-weight:600}
+  .star{cursor:pointer;color:var(--faint);width:31px;height:31px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .star.on{color:var(--gold);border-color:var(--gold);background:var(--gold-soft)}
+  .star svg{width:15px;height:15px}
+  .rowact{display:flex;gap:6px}
+  .icon-btn{width:31px;height:31px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel-2);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}.icon-btn.del:hover{border-color:var(--neg);color:var(--neg)}.icon-btn.waic:hover{border-color:var(--wa);color:var(--wa)}.icon-btn.dis{opacity:.35;cursor:not-allowed}.icon-btn svg{width:15px;height:15px}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty-state svg{width:50px;height:50px;opacity:.4;margin-bottom:14px;color:var(--accent)}
+  .empty-state h3{margin:0 0 6px;font-size:18px;color:var(--ink)}.empty-state p{margin:0 0 18px;font-size:13.5px;color:var(--muted)}
+  .tfoot{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-top:1px solid var(--line-strong);background:var(--panel-2);font-size:12.5px;color:var(--muted);flex-wrap:wrap;gap:8px}
+  /* campaigns */
+  .camp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .camp-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);cursor:pointer;transition:.15s}
+  .camp-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .camp-card .ch{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .camp-card h3{margin:0 0 4px;font-size:16px;font-weight:700}
+  .camp-card .client{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .cstatus{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .cs-draft{background:var(--panel-2);color:var(--muted);border:1px solid var(--line-strong)}.cs-active{background:var(--pos-soft);color:var(--pos)}.cs-done{background:var(--blue-soft);color:var(--blue)}
+  .camp-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--faint);flex-wrap:wrap}
+  .camp-meta .pill{background:var(--accent-soft);color:var(--accent-ink);padding:3px 10px;border-radius:20px;font-weight:600}
+  .add-camp{border:2px dashed var(--line-strong);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:150px;color:var(--muted)}
+  .add-camp:hover{border-color:var(--accent);color:var(--accent)}.add-camp svg{width:30px;height:30px}
+  /* campaign detail */
+  .camp-detail{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+  .cd-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .cd-head h2{margin:0;font-size:20px;font-weight:700}.cd-head .client{color:var(--muted);font-size:13px;margin-top:4px}
+  .cd-acts{display:flex;gap:8px;flex-wrap:wrap}
+  .cd-brief{padding:14px 20px;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.7;white-space:pre-wrap;color:var(--muted)}
+  .budget{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+  .bcell{background:var(--panel);padding:14px 18px}
+  .bcell .l{font-size:11.5px;color:var(--muted);font-weight:500}.bcell .v{font-size:18px;font-weight:700;margin-top:4px}
+  .bcell .v.pos{color:var(--pos)}.bcell .v.neg{color:var(--neg)}
+  .bcell input{width:110px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:7px;font-family:'IBM Plex Mono';font-size:13px;background:var(--panel-2);margin-top:4px}
+  .mrow{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .mrow:last-child{border-bottom:none}.mrow:hover{background:var(--panel-2)}
+  .mrow .who{display:flex;align-items:center;gap:9px;min-width:180px;flex:1}
+  .msel{padding:6px 9px;border:1px solid var(--line-strong);border-radius:8px;font-family:inherit;font-size:12px;background:var(--panel-2);cursor:pointer}
+  .mprice{width:92px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;font-family:'IBM Plex Mono';font-size:12.5px;background:var(--panel-2)}
+  .stat-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:7px;border:1px solid}
+  .st-مرشح,.st-default{background:var(--panel-2);color:var(--muted);border-color:var(--line-strong)}
+  .st-تواصل{background:var(--blue-soft);color:var(--blue);border-color:#bcd4ec}
+  .st-انتظار{background:var(--amber-soft);color:var(--amber);border-color:#e6d3a3}
+  .st-تفاوض{background:var(--purple-soft);color:var(--purple);border-color:#d8c6ec}
+  .st-معتمد{background:var(--pos-soft);color:var(--pos);border-color:#bfe0cc}
+  .st-نشر{background:var(--accent-soft);color:var(--accent-ink);border-color:#c4ddd5}
+  .st-معتذر{background:var(--neg-soft);color:var(--neg);border-color:#e8c3bf}
+  /* charts */
+  .chartcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;margin-bottom:16px}
+  .chartcard h3{margin:0 0 14px;font-size:15px;font-weight:700}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .bar-lbl{width:130px;font-size:12px;color:var(--muted);text-align:left;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-track{flex:1;background:var(--panel-2);border-radius:6px;height:22px;position:relative;overflow:hidden}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#1d7a64);border-radius:6px;min-width:2px;transition:width .4s}
+  .bar-val{font-family:'IBM Plex Mono';font-size:12px;font-weight:600;width:54px;text-align:left}
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.charts-grid{grid-template-columns:1fr}}
+  /* modals */
+  .overlay{position:fixed;inset:0;background:rgba(28,27,24,.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border-radius:18px;width:100%;max-width:560px;box-shadow:0 24px 60px rgba(0,0,0,.25);overflow:hidden;animation:pop .2s ease}
+  .modal.wide{max-width:680px}
+  @keyframes pop{from{transform:scale(.96) translateY(8px);opacity:0}to{transform:none;opacity:1}}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal-head h3{margin:0;font-size:17px;font-weight:700}.modal-head .sub{font-size:12.5px;color:var(--muted);margin-top:3px;font-weight:400}
+  .modal-body{padding:20px 22px;max-height:74vh;overflow-y:auto}
+  .field{margin-bottom:14px}.field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;font-family:inherit;font-size:14px;background:var(--panel-2);color:var(--ink)}
+  .field input.num{font-family:'IBM Plex Mono',monospace}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:#fff}
+  .field textarea{resize:vertical;min-height:60px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;background:var(--panel-2)}
+  .x-btn{width:34px;height:34px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .x-btn:hover{color:var(--neg);border-color:var(--neg)}
+  .picker{border:1px solid var(--line-strong);border-radius:10px;max-height:260px;overflow-y:auto;background:var(--panel-2)}
+  .picker .pk{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+  .picker .pk:last-child{border-bottom:none}.picker .pk:hover{background:#fff}.picker .pk input{width:auto}.pk .small{font-size:11.5px;color:var(--faint);margin-inline-start:auto}
+  .resp-transcript{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .bubble{padding:11px 14px;border-radius:13px;font-size:13.5px;line-height:1.6;max-width:88%;white-space:pre-wrap}
+  .bubble.inf{background:var(--panel-2);border:1px solid var(--line);align-self:flex-start;border-bottom-right-radius:4px}
+  .bubble.ag{background:var(--accent-soft);border:1px solid #cfe2da;align-self:flex-end;border-bottom-left-radius:4px}
+  .bubble .who{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px}.ag .who{color:var(--accent-ink)}
+  .reply-acts{display:flex;gap:8px;margin-top:8px}.reply-acts button{font-size:12px;padding:7px 12px}
+  .thinking{align-self:flex-end;color:var(--accent);font-size:13px;display:flex;align-items:center;gap:8px;padding:6px 4px}
+  .spin{width:15px;height:15px;border:2px solid var(--accent-soft);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+  .ai-note{font-size:11.5px;color:#6b5a1f;background:var(--gold-soft);border:1px solid #e9dcb6;padding:9px 12px;border-radius:9px;margin-bottom:12px;line-height:1.5}
+  /* activity */
+  .act-item{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:flex-start}
+  .act-item:last-child{border-bottom:none}
+  .act-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px;flex-shrink:0}
+  .act-txt{font-size:13px}.act-time{font-size:11px;color:var(--faint);margin-top:2px}
+  .toast{position:fixed;bottom:22px;inset-inline-start:50%;transform:translateX(50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:11px;font-size:13.5px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:80;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{transform:translateX(50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand" onclick="go('home')"><h1><span class="dot"></span> منصة المؤثرين</h1>
+      <p>أهداف للخدمات التسويقية</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="backupData()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>نسخة احتياطية</button>
+      <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreData(event)">
+      <button class="btn" onclick="document.getElementById('restoreFile').click()">استرجاع</button>
+    </div>
+  </header>
+
+  <div class="nav">
+    <button class="navi on" id="nav-home" onclick="go('home')">الرئيسية</button>
+    <button class="navi" id="nav-library" onclick="go('library')">المكتبة</button>
+    <button class="navi" id="nav-campaigns" onclick="go('campaigns')">الحملات</button>
+    <button class="navi" id="nav-replies" onclick="go('replies')">ردود الأسعار <span id="repliesBadge" style="display:none;background:var(--neg);color:#fff;border-radius:20px;padding:1px 8px;font-size:11px;margin-inline-start:4px"></span></button>
+    <button class="navi" id="nav-stats" onclick="go('stats')">الإحصائيات</button>
+    <button class="navi" id="nav-activity" onclick="go('activity')">السجل</button>
+  </div>
+
+  <!-- HOME -->
+  <div class="view on" id="v-home">
+    <div class="actions-cards">
+      <div class="acard" onclick="go('library')"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15z"/></svg></div><div><h3>مكتبة المؤثرين</h3><p id="home-libcount">—</p></div></div>
+      <div class="acard gold" onclick="openCampModal()"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></div><div><h3>حملة جديدة</h3><p>ابدأ حملة وحدّد مؤثرينها</p></div></div>
+      <div class="acard blue" onclick="go('campaigns')"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 14l4-4 3 3 5-5"/></svg></div><div><h3>الحملات</h3><p id="home-campcount">—</p></div></div>
+      <div class="acard pur" onclick="go('stats')"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div><div><h3>الإحصائيات</h3><p>توزيع وأرقام القاعدة</p></div></div>
+    </div>
+    <div class="stats" id="home-stats"></div>
+    <div class="section-h"><h2>أحدث الحملات</h2><button class="btn sm" onclick="go('campaigns')">عرض الكل</button></div>
+    <div class="camp-grid" id="home-recent"></div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div class="view" id="v-library">
+    <div class="section-h"><h2>مكتبة المؤثرين</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="document.getElementById('importFile').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>استيراد</button>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="importExcel(event)">
+        <button class="btn" onclick="exportExcel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 12l-4-4m4 4l4-4M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2"/></svg>تصدير</button>
+        <button class="btn" onclick="clearAll()" style="color:var(--neg)">تفريغ القاعدة</button>
+        <button class="btn primary" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>إضافة</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="search-row">
+        <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="searchBox" type="text" placeholder="ابحث باسم المؤثر..." oninput="renderLib()"></div>
+        <select class="sortsel" id="sortBy" onchange="renderLib()">
+          <option value="name">ترتيب: الاسم</option><option value="online">سعر أونلاين</option><option value="visit">سعر حضوري</option><option value="followers">المتابعين</option><option value="platform">المنصة</option></select>
+        <button class="dir-btn" id="dirBtn" onclick="toggleDir()">▲ تصاعدي</button>
+      </div>
+      <div class="filters">
+        <div class="fgroup" id="fPlatform"><span class="glabel">المنصة</span></div><div class="sep"></div>
+        <div class="fgroup" id="fTier"><span class="glabel">الشريحة</span></div>
+      </div>
+      <div class="filters"><div class="fgroup" id="fCat"><span class="glabel">التصنيف</span></div></div>
+      <div class="filters">
+        <div class="fgroup"><span class="glabel">الجنس</span>
+          <span class="chip on" data-g="all" onclick="setGender('all',this)">الكل</span>
+          <span class="chip" data-g="ذكر" onclick="setGender('ذكر',this)">ذكر</span>
+          <span class="chip" data-g="أنثى" onclick="setGender('أنثى',this)">أنثى</span></div>
+        <div class="sep"></div>
+        <div class="fgroup"><span class="glabel">المفضّلة</span>
+          <span class="chip gold" data-fav="all" onclick="setFav('all',this)">الكل</span>
+          <span class="chip" data-fav="yes" onclick="setFav('yes',this)">★ المفضّلة فقط</span></div>
+        <div class="sep"></div>
+        <div class="fgroup price-range"><span class="glabel">السعر (أونلاين)</span>
+          <input type="number" id="minP" placeholder="من" oninput="renderLib()"><span>—</span>
+          <input type="number" id="maxP" placeholder="إلى" oninput="renderLib()"></div>
+      </div>
+    </div>
+    <div class="tablecard">
+      <div class="table-scroll"><table>
+        <thead><tr>
+          <th class="noSort">★</th>
+          <th data-s="name" onclick="sortCol('name')">المؤثر</th>
+          <th data-s="platform" onclick="sortCol('platform')">المنصة</th>
+          <th class="noSort">التصنيف</th>
+          <th class="noSort">الشريحة</th>
+          <th data-s="followers" onclick="sortCol('followers')">المتابعين</th>
+          <th data-s="online" onclick="sortCol('online')">سعر أونلاين</th>
+          <th data-s="visit" onclick="sortCol('visit')">سعر حضوري</th>
+          <th class="noSort">إجراءات</th>
+        </tr></thead><tbody id="tbody"></tbody></table></div>
+      <div class="tfoot"><span id="footCount">—</span><span>القيم بالريال السعودي · يُحفظ تلقائياً</span></div>
+    </div>
+  </div>
+
+  <!-- CAMPAIGNS LIST -->
+  <div class="view" id="v-campaigns">
+    <div class="section-h"><h2>الحملات</h2><button class="btn primary" onclick="openCampModal()">+ حملة جديدة</button></div>
+    <div class="camp-grid" id="campGrid"></div>
+  </div>
+
+  <!-- CAMPAIGN DETAIL -->
+  <div class="view" id="v-campaign"></div>
+
+  <!-- STATS -->
+  <div class="view" id="v-stats"></div>
+
+  <!-- PRICE REPLIES INBOX -->
+  <div class="view" id="v-replies">
+    <div class="section-h"><h2>صندوق ردود الأسعار</h2></div>
+    <div id="repliesWrap"></div>
+  </div>
+
+  <!-- ACTIVITY -->
+  <div class="view" id="v-activity">
+    <div class="section-h"><h2>سجل النشاط</h2><button class="btn sm" onclick="clearActivity()">مسح السجل</button></div>
+    <div class="tablecard"><div id="actList"></div></div>
+  </div>
+</div>
+
+<!-- Influencer Modal -->
+<div class="overlay" id="overlay"><div class="modal">
+  <div class="modal-head"><h3 id="modalTitle">إضافة مؤثر</h3>
+    <button class="x-btn" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="f_id">
+    <div class="field"><label>اسم المؤثر *</label><input id="f_name" type="text"></div>
+    <div class="grid3">
+      <div class="field"><label>المنصة</label><select id="f_platform"><option>سناب</option><option>تيك توك</option><option>انستقرام</option><option>X</option><option>يوتيوب</option></select></div>
+      <div class="field"><label>الجنس</label><select id="f_gender"><option value="">—</option><option>ذكر</option><option>أنثى</option></select></div>
+      <div class="field"><label>الشريحة</label><select id="f_tier"><option value="">—</option><option>ميجا 1M+</option><option>ماكرو 500K+</option><option>متوسط 100K+</option><option>صغير 10K+</option><option>مايكرو</option></select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>التصنيف</label><input id="f_category" type="text"></div>
+      <div class="field"><label>عدد المتابعين</label><input id="f_followers" type="text" placeholder="مثال: 2.5M"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>سعر أونلاين (منزلي)</label><input id="f_online" class="num" type="number"></div>
+      <div class="field"><label>سعر حضوري</label><input id="f_visit" class="num" type="number"></div>
+    </div>
+    <div class="field"><label>رقم الجوال (لواتساب)</label><input id="f_phone" class="num" type="text" placeholder="0501234567"></div>
+    <div class="field"><label>الملاحظات</label><textarea id="f_notes"></textarea></div>
+  </div>
+  <div class="modal-foot"><button class="btn primary" onclick="saveInfluencer()">حفظ</button><button class="btn" onclick="closeModal()">إلغاء</button></div>
+</div></div>
+
+<!-- Campaign Editor -->
+<div class="overlay" id="campOverlay"><div class="modal wide">
+  <div class="modal-head"><h3 id="campModalTitle">حملة جديدة</h3>
+    <button class="x-btn" onclick="closeCampModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="c_id">
+    <div class="grid2">
+      <div class="field"><label>اسم الحملة *</label><input id="c_name" type="text" placeholder="مثال: حملة كيتا — رمضان"></div>
+      <div class="field"><label>العميل</label><input id="c_client" type="text" placeholder="اسم العميل"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>الحالة</label><select id="c_status"><option>مسودة</option><option>نشطة</option><option>منتهية</option></select></div>
+      <div class="field"><label>الميزانية المستهدفة (اختياري)</label><input id="c_budget" class="num" type="number" placeholder="بدون ضريبة"></div>
+    </div>
+    <div class="field"><label>بريف الحملة *</label>
+      <textarea id="c_brief" style="min-height:150px" placeholder="• العميل / المنتج: ...
+• الهدف: ...
+• المطلوب (ديليفرابلز): ...
+• نقاط الحديث: ...
+• الجدول / التسليم: ...
+• ممنوعات: ..."></textarea></div>
+    <div class="field"><label>اختر المؤثرين</label>
+      <div class="search" style="margin-bottom:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="pickerSearch" placeholder="ابحث لإضافة مؤثر..." oninput="renderPicker()"></div>
+      <div class="picker" id="picker"></div></div>
+  </div>
+  <div class="modal-foot"><button class="btn primary" onclick="saveCampaign()">حفظ الحملة</button><button class="btn" onclick="closeCampModal()">إلغاء</button></div>
+</div></div>
+
+<!-- Responder -->
+<div class="overlay" id="respOverlay"><div class="modal wide">
+  <div class="modal-head"><div><h3 id="respTitle">مساعد الرد</h3><div class="sub" id="respSub"></div></div>
+    <button class="x-btn" onclick="closeResp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+  <div class="modal-body">
+    <div class="ai-note">المساعد يكتب رداً مقترحاً من واقع بريف الحملة فقط. راجِع قبل الإرسال — لا يُرسل شيء تلقائياً، ولا يلتزم بأسعار أو شروط خارج البريف.</div>
+    <div class="resp-transcript" id="transcript"></div>
+    <div class="field" style="margin-bottom:8px"><label>رسالة / سؤال المؤثر</label>
+      <textarea id="respInput" style="min-height:70px" placeholder="الصق رسالة المؤثر..."></textarea></div>
+    <button class="btn primary" id="askBtn" onclick="askAgent()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 8v4l3 2"/></svg>اكتب الرد المقترح</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- شريط سفلي موحّد مع تطبيق أهداف -->
+<nav class="app-tabbar">
+  <a class="app-tab" href="index.html?tab=tasks">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 5.5l1 1 1.8-1.9M4 11.5l1 1 1.8-1.9M4 17.5l1 1 1.8-1.9"/></svg>
+    <span>المهام</span>
+  </a>
+  <a class="app-tab" href="index.html?tab=proposals">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg>
+    <span>العروض</span>
+  </a>
+  <a class="app-tab" href="index.html?tab=clients">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.2 19a5.8 5.8 0 0111.6 0"/><path d="M16.5 5.3a3.2 3.2 0 010 5.9M21 19a5.8 5.8 0 00-3.8-5.4"/></svg>
+    <span>العملاء</span>
+  </a>
+  <a class="app-tab on" href="influencers.html">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/><path d="M12 11.5v0"/><circle cx="18.5" cy="6" r="1.6"/><circle cx="5.5" cy="6" r="1.6"/></svg>
+    <span>المؤثرين</span>
+  </a>
+</nav>
+<style>
+  .wrap{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))!important}
+  .app-tabbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:#fff;border-top:1px solid var(--line);
+    display:flex;padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));box-shadow:0 -2px 16px rgba(40,10,80,.05)}
+  .app-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);
+    font-size:11.5px;font-weight:500;text-decoration:none;padding:4px 0}
+  .app-tab.on{color:var(--accent)}
+  .toast{inset-inline-start:auto!important;right:50%}
+</style>
+
+<script>
+const INF_KEY='ahdaf_influencers_v3',CAMP_KEY='ahdaf_campaigns_v2',ACT_KEY='ahdaf_activity_v1',VAT=0.15;
+const STATUSES=['مرشح','تم التواصل','بانتظار الرد','تفاوض','معتمد','تم النشر','معتذر'];
+let DATA=[],CAMPAIGNS=[],ACTIVITY=[],REPLIES=[];
+let filterPlatform='all',filterTier='all',filterCat='all',filterGender='all',filterFav='all',sortKey='name',sortDir=1;
+let pickerSelected=new Set(),respState=null,currentCampId=null;
+function uid(p){return(p||'i')+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+// ============================================================
+//  إعداد Firebase — الصق إعداداتك من لوحة تحكم Firebase هنا
+//  Project settings ← Your apps ← Web app ← Config
+// ============================================================
+const firebaseConfig = {
+  apiKey:            "AIzaSyB6Wczw1P_HRH0duTe6mhp1AxheQ8_Necw",
+  authDomain:        "ahdaf-influencers.firebaseapp.com",
+  projectId:         "ahdaf-influencers",
+  storageBucket:     "ahdaf-influencers.firebasestorage.app",
+  messagingSenderId: "901322987426",
+  appId:             "1:901322987426:web:13e998ecbabcfa3c0244fb"
+};
+// ============================================================
+//  رابط وسيط مساعد الردود (Cloudflare Worker). الصق رابط الـWorker هنا.
+//  لو تُرك فارغاً ويعمل داخل Claude، ينادي Anthropic مباشرة (وضع المعاينة).
+const WORKER_URL = "https://ahdaf-reply.nawafalsawed.workers.dev/";
+// ============================================================
+
+const USE_FB = typeof firebase!=='undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('PASTE')<0;
+let db=null;
+if(USE_FB){ try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }catch(e){ console.error('Firebase init error:',e); } }
+
+function normalizeInf(){ if(!DATA)DATA=[]; DATA.forEach(d=>{if(d.favorite===undefined)d.favorite=false; delete d.approved;}); }
+function rerender(){
+  if(document.getElementById('v-home').classList.contains('on'))renderHome();
+  else if(document.getElementById('v-library').classList.contains('on'))renderLib();
+  else if(document.getElementById('v-campaigns').classList.contains('on'))renderCampaigns();
+  else if(document.getElementById('v-campaign').classList.contains('on')&&currentCampId)renderCampaign(currentCampId);
+  else if(document.getElementById('v-stats').classList.contains('on'))renderStats();
+  else if(document.getElementById('v-activity').classList.contains('on'))renderActivity();
+  else if(document.getElementById('v-replies').classList.contains('on'))renderReplies();
+  updateRepliesBadge();
+}
+function updateRepliesBadge(){const n=REPLIES.filter(r=>r.status==='new').length;const b=document.getElementById('repliesBadge');if(b){b.textContent=n;b.style.display=n?'inline-block':'none'}}
+
+// ---------- storage adapter (Firebase if configured, else local browser) ----------
+async function loadAll(){
+  if(USE_FB && db){   // ===== Firebase mode: shared + real-time =====
+    return new Promise(resolve=>{
+      const first={i:false,c:false,a:false};
+      const done=()=>{ if(first.i&&first.c&&first.a) resolve(); };
+      db.collection('app').doc('influencers').onSnapshot(s=>{ DATA=(s.exists&&s.data().list)||[]; normalizeInf(); first.i=true; rerender(); done(); }, e=>{console.error(e);first.i=true;done()});
+      db.collection('app').doc('campaigns').onSnapshot(s=>{ CAMPAIGNS=(s.exists&&s.data().list)||[]; first.c=true; rerender(); done(); }, e=>{console.error(e);first.c=true;done()});
+      db.collection('app').doc('activity').onSnapshot(s=>{ ACTIVITY=(s.exists&&s.data().list)||[]; first.a=true; rerender(); done(); }, e=>{console.error(e);first.a=true;done()});
+      db.collection('price_replies').orderBy('ts','desc').limit(200).onSnapshot(s=>{ REPLIES=s.docs.map(d=>({_id:d.id,...d.data()})); rerender(); }, e=>{console.error('price_replies',e)});
+      setTimeout(resolve,4000); // safety: render even if a collection is empty/slow
+    });
+  }
+  // ===== Local mode (Claude preview / offline): window.storage =====
+  try{if(window.storage){const r=await window.storage.get(INF_KEY);if(r&&r.value)DATA=JSON.parse(r.value)}}catch(e){}
+  normalizeInf();
+  try{if(window.storage){const r=await window.storage.get(CAMP_KEY);if(r&&r.value)CAMPAIGNS=JSON.parse(r.value)}}catch(e){}
+  if(!CAMPAIGNS||!CAMPAIGNS.length){
+    try{if(window.storage){const r=await window.storage.get('ahdaf_campaigns_v1');if(r&&r.value){const old=JSON.parse(r.value);CAMPAIGNS=old.map(c=>({id:c.id,name:c.name,client:'',brief:c.brief,status:'مسودة',budget:null,createdAt:c.createdAt,members:(c.influencerIds||[]).map(iid=>({influencerId:iid,status:'مرشح',serviceType:'',agreedPrice:null,notes:''}))}));if(CAMPAIGNS.length)await persistCamp()}}}catch(e){}
+  }
+  if(!CAMPAIGNS)CAMPAIGNS=[];
+  try{if(window.storage){const r=await window.storage.get(ACT_KEY);if(r&&r.value)ACTIVITY=JSON.parse(r.value)}}catch(e){}
+  if(!ACTIVITY)ACTIVITY=[];
+}
+async function persist(){ if(USE_FB&&db){try{await db.collection('app').doc('influencers').set({list:DATA})}catch(e){console.error(e);toast('تعذّر الحفظ في Firebase')} return;} try{if(window.storage)await window.storage.set(INF_KEY,JSON.stringify(DATA))}catch(e){} }
+async function persistCamp(){ if(USE_FB&&db){try{await db.collection('app').doc('campaigns').set({list:CAMPAIGNS})}catch(e){console.error(e)} return;} try{if(window.storage)await window.storage.set(CAMP_KEY,JSON.stringify(CAMPAIGNS))}catch(e){} }
+async function persistAct(){ if(USE_FB&&db){try{await db.collection('app').doc('activity').set({list:ACTIVITY})}catch(e){console.error(e)} return;} try{if(window.storage)await window.storage.set(ACT_KEY,JSON.stringify(ACTIVITY))}catch(e){} }
+function logAct(text){ACTIVITY.unshift({ts:Date.now(),text});if(ACTIVITY.length>300)ACTIVITY=ACTIVITY.slice(0,300);persistAct()}
+
+// ---------- helpers ----------
+function fmt(n){return n==null||n===''?'—':Number(n).toLocaleString('en-US')}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3000)}
+function arDigits(s){return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d))}
+function platformClass(p){return p==='سناب'?'b-snap':p==='X'?'b-x':p==='تيك توك'?'b-tiktok':p==='انستقرام'?'b-insta':p==='يوتيوب'?'b-yt':'b-other'}
+function tierClass(t){if(!t)return'';if(/ميجا/.test(t))return't-mega';if(/ماكرو/.test(t))return't-macro';if(/متوسط/.test(t))return't-mid';if(/صغير/.test(t))return't-small';return't-micro'}
+function statusClass(s){return{'مرشح':'st-مرشح','تم التواصل':'st-تواصل','بانتظار الرد':'st-انتظار','تفاوض':'st-تفاوض','معتمد':'st-معتمد','تم النشر':'st-نشر','معتذر':'st-معتذر'}[s]||'st-default'}
+function normPlatform(p){p=String(p||'').trim().toLowerCase();if(/snap/.test(p)||p==='سناب')return'سناب';if(/tiktok|tik tok|tik|تيك/.test(p))return'تيك توك';if(/insta|انستق|انست/.test(p))return'انستقرام';if(/youtu|يوتيوب/.test(p))return'يوتيوب';if(/^x$|twitter|تويتر/.test(p))return'X';return p?String(p).trim():''}
+function normGender(g){g=String(g||'').trim().toLowerCase();if(/female|انثى|أنثى/.test(g))return'أنثى';if(/male|ذكر/.test(g))return'ذكر';return''}
+function normTier(t){t=String(t||'').toLowerCase();if(/mega|1m|مليون|ميجا/.test(t))return'ميجا 1M+';if(/macro|500k|ماكرو/.test(t))return'ماكرو 500K+';if(/mid-?tier|100k\s*-\s*500|100k\+|mid 100|متوسط/.test(t))return'متوسط 100K+';if(/10k\+|mid 10|صغير/.test(t))return'صغير 10K+';if(/micro|10k\s*-\s*100|مايكرو/.test(t))return'مايكرو';return t?t.trim():''}
+function parsePrice(raw){
+  const orig=String(raw==null?'':raw).trim();
+  if(!orig||/^-+$|^_+$/.test(orig))return{num:null,note:''};
+  let s=arDigits(orig).replace(/٬/g,'').replace(/٫/g,'.');
+  const groups=s.match(/\d[\d.,]*/g)||[];           // distinct number groups in the cell
+  const hasNewline=/[\n\r]/.test(orig);
+  // multi-line cells, ranges, or more than one number => NOT a single price: keep raw text, no number
+  if(hasNewline||groups.length>1||/(الى|إلى|–|—|_|\bto\b)/i.test(s)){
+    return{num:null,note:orig.replace(/\s*[\n\r]+\s*/g,' · ').replace(/\s+/g,' ').trim()};
+  }
+  if(!groups.length)return{num:null,note:/[\u0621-\u064a]/.test(orig)?orig:''};
+  let note='';if(/vat|ضريب/i.test(s))note='+ ضريبة';
+  let numStr=groups[0].replace(/,/g,'');
+  const dot=numStr.lastIndexOf('.');if(dot>=0){const after=numStr.length-dot-1;if(after===3)numStr=numStr.replace(/\./g,'')}
+  const n=parseFloat(numStr);if(isNaN(n))return{num:null,note:orig};
+  const stripped=s.replace(/ريال|ر\.?\s?س|sar|vat|ضريبة|شامل/gi,'');
+  if(/[\u0621-\u064a]{2,}/.test(stripped))note=note||orig;  // keep descriptive words (e.g. "سعر التغريدة")
+  return{num:Math.round(n),note}
+}
+function parseFollowers(raw){const orig=String(raw==null?'':raw).trim();if(!orig||(/subscribers?/i.test(orig)&&!/\d/.test(orig))||/^-+$/.test(orig))return{text:orig==='-'?'':orig,num:null};let s=arDigits(orig).replace(/٬/g,'').replace(/٫/g,'.').replace(/,/g,'').toLowerCase();const m=s.match(/([\d.]+)\s*(m|مليون|k|ك|ألف|الف)?/);if(!m)return{text:orig,num:null};let n=parseFloat(m[1]);if(isNaN(n))return{text:orig,num:null};const u=m[2]||'';if(/m|مليون/.test(u))n*=1e6;else if(/k|ك|ألف|الف/.test(u))n*=1e3;return{text:orig.replace(/\s+/g,' ').trim(),num:Math.round(n)}}
+function normName(s){return arDigits(String(s||'')).replace(/[\u064b-\u065f\u0670]/g,'').replace(/[إأآا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\u0600-\u06ff a-z0-9]/gi,'').replace(/\s+/g,' ').trim().toLowerCase()}
+function normalizePhone(p){if(!p)return'';let d=arDigits(String(p)).replace(/[^\d]/g,'');if(d.startsWith('00966'))d=d.slice(2);if(d.startsWith('966'))return d;if(d.startsWith('0'))d=d.slice(1);if(d.length===9&&d.startsWith('5'))return'966'+d;return d}
+function waLink(phone,text){return'https://wa.me/'+normalizePhone(phone)+'?text='+encodeURIComponent(text)}
+function campCount(iid){return CAMPAIGNS.filter(c=>c.members.some(m=>m.influencerId===iid)).length}
+
+// ---------- router ----------
+function go(view,arg){
+  ['home','library','campaigns','campaign','stats','activity','replies'].forEach(v=>document.getElementById('v-'+v).classList.toggle('on',v===view));
+  ['home','library','campaigns','stats','activity','replies'].forEach(v=>{const n=document.getElementById('nav-'+v);if(n)n.classList.toggle('on',v===view||(view==='campaign'&&v==='campaigns'))});
+  if(view==='home')renderHome();
+  if(view==='library')renderLib();
+  if(view==='campaigns')renderCampaigns();
+  if(view==='campaign')renderCampaign(arg);
+  if(view==='stats')renderStats();
+  if(view==='activity')renderActivity();
+  if(view==='replies')renderReplies();
+  window.scrollTo(0,0);
+}
+
+// ---------- HOME ----------
+function renderHome(){
+  document.getElementById('home-libcount').textContent=DATA.length+' مؤثر في القاعدة';
+  document.getElementById('home-campcount').textContent=CAMPAIGNS.length+' حملة';
+  const approvals=CAMPAIGNS.reduce((a,c)=>a+c.members.filter(m=>['معتمد','تم النشر'].includes(m.status)).length,0);
+  const favs=DATA.filter(d=>d.favorite).length;
+  const active=CAMPAIGNS.filter(c=>c.status==='نشطة').length;
+  document.getElementById('home-stats').innerHTML=`
+    <div class="stat"><div class="lbl">مؤثرون</div><div class="val num">${DATA.length}</div><div class="sub">في القاعدة</div></div>
+    <div class="stat b"><div class="lbl">حملات نشطة</div><div class="val num">${active}</div><div class="sub">من ${CAMPAIGNS.length} حملة</div></div>
+    <div class="stat p"><div class="lbl">تعميدات</div><div class="val num">${approvals}</div><div class="sub">معتمد عبر الحملات</div></div>
+    <div class="stat g"><div class="lbl">المفضّلة</div><div class="val num">${favs}</div><div class="sub">★ شورت ليست</div></div>`;
+  const recent=CAMPAIGNS.slice(0,4);
+  document.getElementById('home-recent').innerHTML=recent.length?recent.map(campCardHTML).join(''):'<div class="empty-state" style="grid-column:1/-1"><h3>لا توجد حملات بعد</h3><p>أنشئ أول حملة لتبدأ.</p><button class="btn primary" onclick="openCampModal()">+ حملة جديدة</button></div>';
+}
+function campCardHTML(c){
+  const cs=c.status==='نشطة'?'cs-active':c.status==='منتهية'?'cs-done':'cs-draft';
+  const approved=c.members.filter(m=>['معتمد','تم النشر'].includes(m.status)).length;
+  return `<div class="camp-card" onclick="go('campaign','${c.id}')">
+    <div class="ch"><div><h3>${esc(c.name)}</h3>${c.client?`<div class="client">${esc(c.client)}</div>`:'<div class="client">—</div>'}</div><span class="cstatus ${cs}">${esc(c.status)}</span></div>
+    <div class="camp-meta"><span class="pill">${c.members.length} مؤثر</span><span>معتمد: ${approved}</span><span>${new Date(c.createdAt).toLocaleDateString('ar-SA')}</span></div></div>`;
+}
+
+// ---------- LIBRARY ----------
+function chipRow(boxId,values,current,fn){const box=document.getElementById(boxId);box.querySelectorAll('.chip').forEach(c=>c.remove());const all=document.createElement('span');all.className='chip'+(current==='all'?' on':'');all.textContent='الكل';all.onclick=function(){fn('all',this)};box.appendChild(all);values.forEach(v=>{const s=document.createElement('span');s.className='chip'+(current===v?' on':'');s.textContent=v;s.onclick=function(){fn(v,this)};box.appendChild(s)})}
+function setPlatform(p){filterPlatform=p;renderLib()}
+function setTier(t){filterTier=t;renderLib()}
+function setCat(c){filterCat=c;renderLib()}
+function setGender(g,el){filterGender=g;document.querySelectorAll('[data-g]').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLib()}
+function setFav(f,el){filterFav=f;document.querySelectorAll('[data-fav]').forEach(x=>x.classList.remove('on'));el.classList.add('on');el.classList.toggle('gold',f==='all');renderLib()}
+function toggleDir(){sortDir*=-1;document.getElementById('dirBtn').textContent=sortDir===1?'▲ تصاعدي':'▼ تنازلي';renderLib()}
+function sortCol(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1}document.getElementById('sortBy').value=k;document.getElementById('dirBtn').textContent=sortDir===1?'▲ تصاعدي':'▼ تنازلي';renderLib()}
+function renderLib(){
+  const q=document.getElementById('searchBox').value.trim();
+  const minP=parseFloat(document.getElementById('minP').value),maxP=parseFloat(document.getElementById('maxP').value);
+  sortKey=document.getElementById('sortBy').value;
+  chipRow('fPlatform',[...new Set(DATA.map(d=>d.platform).filter(Boolean))],filterPlatform,setPlatform);
+  chipRow('fTier',[...new Set(DATA.map(d=>d.tier).filter(Boolean))],filterTier,setTier);
+  chipRow('fCat',[...new Set(DATA.map(d=>d.category).filter(Boolean))].sort(),filterCat,setCat);
+  let rows=DATA.filter(r=>{
+    if(filterPlatform!=='all'&&r.platform!==filterPlatform)return false;
+    if(filterTier!=='all'&&r.tier!==filterTier)return false;
+    if(filterCat!=='all'&&(r.category||'')!==filterCat)return false;
+    if(filterGender!=='all'&&r.gender!==filterGender)return false;
+    if(filterFav==='yes'&&!r.favorite)return false;
+    if(q&&!r.name.includes(q))return false;
+    const ref=r.online!=null?r.online:r.visit;
+    if(!isNaN(minP)&&(ref==null||ref<minP))return false;
+    if(!isNaN(maxP)&&(ref==null||ref>maxP))return false;
+    return true;
+  });
+  rows.sort((a,b)=>{let va,vb;if(sortKey==='name')return a.name.localeCompare(b.name,'ar')*sortDir;if(sortKey==='platform')return String(a.platform).localeCompare(String(b.platform),'ar')*sortDir;if(sortKey==='followers'){va=a.followersNum;vb=b.followersNum}else if(sortKey==='online'){va=a.online;vb=b.online}else{va=a.visit;vb=b.visit}if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return(va-vb)*sortDir});
+  const tb=document.getElementById('tbody');
+  if(!DATA.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><h3>القاعدة فاضية — استورد قائمتك للبدء</h3><p>صدّر شيت Google كـ Excel ثم اسحبه هنا. تُنظّف الأسعار وتُدمج المكرر تلقائياً.</p><button class="btn primary" onclick="document.getElementById('importFile').click()">استيراد Excel</button></div></td></tr>`}
+  else if(!rows.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><h3>لا نتائج مطابقة</h3></div></td></tr>'}
+  else tb.innerHTML=rows.map(r=>{
+    const hasPhone=!!normalizePhone(r.phone),cc=campCount(r.id);
+    const sec=r.platform2?`<span class="badge b-mini ${platformClass(normPlatform(r.platform2))}">${esc(r.platform2)}</span>`:'';
+    return `<tr>
+      <td><button class="star ${r.favorite?'on':''}" onclick="toggleFav('${r.id}')"><svg viewBox="0 0 24 24" fill="${r.favorite?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5 4.8 1.3 7L12 18l-6.6 3.2 1.3-7-5-4.8 7-.9z"/></svg></button></td>
+      <td><div class="iname">${esc(r.name)}</div><div class="isub">${r.gender?esc(r.gender):''}${sec?' · '+sec:''}${cc?` · <span class="campcount">${cc} حملات</span>`:''}</div>${r.notes?`<div class="inotes">${esc(r.notes)}</div>`:''}</td>
+      <td><span class="badge ${platformClass(r.platform)}">${esc(r.platform||'—')}</span></td>
+      <td>${r.category?`<span class="cat-tag" title="${esc(r.category)}">${esc(r.category)}</span>`:'<span class="cat-empty">—</span>'}</td>
+      <td>${r.tier?`<span class="tier-tag ${tierClass(r.tier)}">${esc(r.tier)}</span>`:'<span class="cat-empty">—</span>'}</td>
+      <td><span class="fol num">${r.followersText?esc(r.followersText):'—'}</span></td>
+      <td><span class="price num ${r.online==null?'empty':''}">${fmt(r.online)}</span></td>
+      <td><span class="price num ${r.visit==null?'empty':''}">${fmt(r.visit)}</span></td>
+      <td><div class="rowact">
+        <button class="icon-btn waic ${hasPhone?'':'dis'}" ${hasPhone?`onclick="quickWa('${r.id}')"`:''} title="واتساب"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zM6.597 20.13c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.107zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.71.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg></button>
+        <button class="icon-btn" onclick="editInfluencer('${r.id}')" title="تعديل"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4v16h16v-7M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="icon-btn del" onclick="deleteInfluencer('${r.id}')" title="حذف"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg></button>
+      </div></td></tr>`;
+  }).join('');
+  document.getElementById('footCount').textContent=`عرض ${rows.length} من ${DATA.length} مؤثر`;
+  document.querySelectorAll('#v-library thead th[data-s]').forEach(th=>{th.innerHTML=th.textContent.replace(/ [▲▼]$/,'');if(th.dataset.s===sortKey)th.innerHTML+=` <span class="arrow">${sortDir===1?'▲':'▼'}</span>`});
+}
+async function toggleFav(id){const r=DATA.find(x=>x.id===id);if(r){r.favorite=!r.favorite;await persist();renderLib()}}
+function quickWa(id){const r=DATA.find(x=>x.id===id);if(!r)return;window.open(waLink(r.phone,`السلام عليكم ${r.name} 👋\nمعك فريق أهداف للخدمات التسويقية، نحب نتعاون معك في حملة قادمة. ممكن تشاركنا أسعارك الحالية (أونلاين/حضوري)؟ وشكراً.`),'_blank')}
+
+// ---------- influencer CRUD ----------
+function openModal(){['f_id','f_name','f_category','f_followers','f_phone','f_online','f_visit','f_notes'].forEach(i=>document.getElementById(i).value='');document.getElementById('f_platform').value='سناب';document.getElementById('f_gender').value='';document.getElementById('f_tier').value='';document.getElementById('modalTitle').textContent='إضافة مؤثر';document.getElementById('overlay').classList.add('show');setTimeout(()=>document.getElementById('f_name').focus(),50)}
+function editInfluencer(id){const r=DATA.find(x=>x.id===id);if(!r)return;document.getElementById('modalTitle').textContent='تعديل مؤثر';document.getElementById('f_id').value=r.id;document.getElementById('f_name').value=r.name;document.getElementById('f_platform').value=r.platform||'سناب';document.getElementById('f_gender').value=r.gender||'';document.getElementById('f_tier').value=r.tier||'';document.getElementById('f_category').value=r.category||'';document.getElementById('f_followers').value=r.followersText||'';document.getElementById('f_online').value=r.online??'';document.getElementById('f_visit').value=r.visit??'';document.getElementById('f_phone').value=r.phone||'';document.getElementById('f_notes').value=r.notes||'';document.getElementById('overlay').classList.add('show')}
+function closeModal(){document.getElementById('overlay').classList.remove('show')}
+async function saveInfluencer(){const name=document.getElementById('f_name').value.trim();if(!name){toast('الرجاء إدخال اسم المؤثر');return}const fol=parseFollowers(document.getElementById('f_followers').value);const obj={name,platform:document.getElementById('f_platform').value,gender:document.getElementById('f_gender').value,tier:document.getElementById('f_tier').value,category:document.getElementById('f_category').value.trim(),followersText:fol.text,followersNum:fol.num,platform2:'',followers2:'',online:document.getElementById('f_online').value===''?null:Number(document.getElementById('f_online').value),visit:document.getElementById('f_visit').value===''?null:Number(document.getElementById('f_visit').value),phone:document.getElementById('f_phone').value.trim(),notes:document.getElementById('f_notes').value.trim()};const id=document.getElementById('f_id').value;if(id){const r=DATA.find(x=>x.id===id);Object.assign(r,obj);logAct('تعديل مؤثر: '+name);toast('تم التحديث')}else{DATA.unshift({id:uid(),favorite:false,source:'يدوي',...obj});logAct('إضافة مؤثر: '+name);toast('تمت الإضافة')}await persist();closeModal();renderLib()}
+async function deleteInfluencer(id){const r=DATA.find(x=>x.id===id);if(!r)return;if(!confirm(`حذف "${r.name}" نهائياً؟`))return;DATA=DATA.filter(x=>x.id!==id);logAct('حذف مؤثر: '+r.name);await persist();renderLib();toast('تم الحذف')}
+async function clearAll(){if(!confirm('سيتم حذف كل المؤثرين من القاعدة (الحملات تبقى). متابعة؟'))return;DATA=[];logAct('تفريغ قاعدة المؤثرين');await persist();renderLib();toast('تم تفريغ القاعدة — تقدر تستورد من جديد')}
+
+// ---------- import ----------
+function importExcel(ev){const files=[...ev.target.files];if(!files.length)return;let added=0,merged=0,pending=files.length;files.forEach(file=>{const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'binary'});wb.SheetNames.forEach(sn=>{const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});const res=ingestSheet(aoa);added+=res.added;merged+=res.merged})}catch(err){console.error(err);toast('تعذّر قراءة: '+file.name)}if(--pending===0){logAct(`استيراد: أُضيف ${added}، دُمج ${merged}`);persist();renderLib();toast(`تم: أُضيف ${added}، دُمج ${merged} مكرر`);ev.target.value=''}};reader.readAsBinaryString(file)})}
+function ingestSheet(aoa){
+  let added=0,merged=0;const nameHeads=['influencer','المؤثر','اسم المعلن','المؤثرين','الاسم','name','المعلن'];
+  let hr=-1;for(let i=0;i<Math.min(aoa.length,5);i++){const row=(aoa[i]||[]).map(c=>String(c).trim().toLowerCase().replace(/\s+/g,' '));if(row.some(h=>nameHeads.includes(h))){hr=i;break}}
+  if(hr<0)return{added,merged};
+  const H=(aoa[hr]||[]).map(c=>String(c).trim().toLowerCase().replace(/\s+/g,' '));
+  const idxOf=(...n)=>H.findIndex(h=>n.includes(h));
+  const idxNth=(k,...n)=>{let c=0;for(let i=0;i<H.length;i++){if(n.includes(H[i])){if(c===k)return i;c++}}return-1};
+  const cName=idxOf(...nameHeads),cCat=idxOf('category','التصنيف','الفئة'),cGen=idxOf('gender','الجنس'),cTier=idxOf('level','الشريحة','tier');
+  const cPlat=idxNth(0,'posting platform link','platform','المنصة','المنصه'),cPlat2=idxNth(1,'posting platform link','platform');
+  const cFol=idxNth(0,'followers','المتابعين'),cFol2=idxNth(1,'followers','المتابعين');
+  const cOnline=idxOf('home cost','السعرالمنزلي','السعر المنزلي','سعر منزلي','سعر التكلفة','online cost');
+  let cVisit=idxOf('visit cost','السعر الحضوري','سعر حضوري','الحضوري');const cPrice=idxOf('السعر','price','سعر البيع');if(cVisit<0&&cPrice>=0)cVisit=cPrice;
+  const cPhone=idxOf('الجوال','رقم الجوال','phone','جوال'),cNotes=idxOf('الملاحظات','ملاحظات','notes','طريقة الإعلان'),cDate=idxOf('التاريخ');
+  for(let i=hr+1;i<aoa.length;i++){const row=aoa[i]||[];const name=String(row[cName]||'').trim();if(!name||/^(الاجمالي|المجموع|الإجمالي)$/.test(name))continue;
+    const onP=cOnline>=0?parsePrice(row[cOnline]):{num:null,note:''},viP=cVisit>=0?parsePrice(row[cVisit]):{num:null,note:''},fol=cFol>=0?parseFollowers(row[cFol]):{text:'',num:null};
+    const notes=[cNotes>=0?row[cNotes]:'',cDate>=0?row[cDate]:'',onP.note,viP.note].map(x=>String(x||'').trim()).filter(x=>x&&x!=='-').join(' · ');
+    const obj={name,platform:cPlat>=0?normPlatform(row[cPlat]):'',platform2:cPlat2>=0?normPlatform(row[cPlat2]):'',followers2:cFol2>=0?String(row[cFol2]||'').trim().replace(/^-+$/,''):'',category:cCat>=0?String(row[cCat]||'').trim():'',gender:cGen>=0?normGender(row[cGen]):'',tier:cTier>=0?normTier(row[cTier]):'',followersText:fol.text,followersNum:fol.num,online:onP.num,visit:viP.num,phone:cPhone>=0?String(row[cPhone]||'').trim():'',notes,source:'مستورد'};
+    const key=normName(name),ex=DATA.find(d=>normName(d.name)===key);
+    if(ex){['platform','platform2','category','gender','tier','phone'].forEach(f=>{if(!ex[f]&&obj[f])ex[f]=obj[f]});if(ex.online==null&&obj.online!=null)ex.online=obj.online;if(ex.visit==null&&obj.visit!=null)ex.visit=obj.visit;if(!ex.followersText&&obj.followersText){ex.followersText=obj.followersText;ex.followersNum=obj.followersNum}if(obj.notes&&!String(ex.notes||'').includes(obj.notes))ex.notes=[ex.notes,obj.notes].filter(Boolean).join(' · ');merged++}
+    else{DATA.push({id:uid(),favorite:false,...obj});added++}}
+  return{added,merged};
+}
+function exportExcel(){const ids=[...document.querySelectorAll('#tbody tr')].map(tr=>{const b=tr.querySelector('.star');return b?b.getAttribute('onclick').match(/'([^']+)'/)[1]:null}).filter(Boolean);const list=ids.length?ids.map(id=>DATA.find(d=>d.id===id)).filter(Boolean):DATA;if(!list.length){toast('لا بيانات للتصدير');return}const aoa=list.map(r=>({'المؤثر':r.name,'المنصة':r.platform||'','منصة ثانية':r.platform2||'','التصنيف':r.category||'','الشريحة':r.tier||'','الجنس':r.gender||'','المتابعين':r.followersText||'','سعر أونلاين':r.online??'','سعر حضوري':r.visit??'','الجوال':r.phone||'','الملاحظات':r.notes||'','مفضّل':r.favorite?'★':''}));const ws=XLSX.utils.json_to_sheet(aoa);ws['!cols']=[{wch:22},{wch:10},{wch:10},{wch:18},{wch:13},{wch:8},{wch:12},{wch:12},{wch:12},{wch:14},{wch:26},{wch:6}];const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'المؤثرين');XLSX.writeFile(wb,'قاعدة_المؤثرين_'+new Date().toISOString().slice(0,10)+'.xlsx');toast('تم تصدير '+list.length+' مؤثر')}
+
+// ---------- CAMPAIGNS ----------
+function renderCampaigns(){document.getElementById('campGrid').innerHTML=CAMPAIGNS.map(campCardHTML).join('')+`<button class="camp-card add-camp" onclick="openCampModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span>حملة جديدة</span></button>`}
+function openCampModal(id){pickerSelected=new Set();['c_id','c_name','c_client','c_brief','c_budget','pickerSearch'].forEach(i=>document.getElementById(i).value='');document.getElementById('c_status').value='مسودة';document.getElementById('campModalTitle').textContent='حملة جديدة';if(id){const c=CAMPAIGNS.find(x=>x.id===id);if(c){document.getElementById('campModalTitle').textContent='تعديل الحملة';document.getElementById('c_id').value=c.id;document.getElementById('c_name').value=c.name;document.getElementById('c_client').value=c.client||'';document.getElementById('c_brief').value=c.brief;document.getElementById('c_status').value=c.status;document.getElementById('c_budget').value=c.budget??'';pickerSelected=new Set(c.members.map(m=>m.influencerId))}}renderPicker();document.getElementById('campOverlay').classList.add('show')}
+function closeCampModal(){document.getElementById('campOverlay').classList.remove('show')}
+function renderPicker(){const q=document.getElementById('pickerSearch').value.trim();const list=DATA.filter(d=>!q||d.name.includes(q)).sort((a,b)=>(b.favorite?1:0)-(a.favorite?1:0)).slice(0,250);document.getElementById('picker').innerHTML=list.map(d=>`<label class="pk"><input type="checkbox" ${pickerSelected.has(d.id)?'checked':''} onchange="togglePick('${d.id}',this.checked)"><span class="iname">${d.favorite?'★ ':''}${esc(d.name)}</span><span class="small">${esc(d.platform||'')}${d.online!=null?' · '+fmt(d.online):''}</span></label>`).join('')||'<div style="padding:14px;color:var(--faint)">لا نتائج</div>'}
+function togglePick(id,on){on?pickerSelected.add(id):pickerSelected.delete(id)}
+async function saveCampaign(){const name=document.getElementById('c_name').value.trim(),brief=document.getElementById('c_brief').value.trim();if(!name){toast('اكتب اسم الحملة');return}if(!brief){toast('اكتب بريف الحملة');return}const client=document.getElementById('c_client').value.trim(),status=document.getElementById('c_status').value,budget=document.getElementById('c_budget').value===''?null:Number(document.getElementById('c_budget').value);const id=document.getElementById('c_id').value;const sel=[...pickerSelected];
+  if(id){const c=CAMPAIGNS.find(x=>x.id===id);c.name=name;c.client=client;c.brief=brief;c.status=status;c.budget=budget;const existing=new Map(c.members.map(m=>[m.influencerId,m]));c.members=sel.map(iid=>existing.get(iid)||{influencerId:iid,status:'مرشح',serviceType:'',agreedPrice:null,notes:''});logAct('تعديل حملة: '+name);toast('تم تحديث الحملة')}
+  else{CAMPAIGNS.unshift({id:uid('c'),name,client,brief,status,budget,createdAt:Date.now(),members:sel.map(iid=>({influencerId:iid,status:'مرشح',serviceType:'',agreedPrice:null,notes:''}))});logAct('إنشاء حملة: '+name);toast('تم إنشاء الحملة')}
+  await persistCamp();closeCampModal();const newId=id||CAMPAIGNS[0].id;go('campaign',newId)}
+async function deleteCampaign(id){const c=CAMPAIGNS.find(x=>x.id===id);if(!c)return;if(!confirm(`حذف حملة "${c.name}"؟`))return;CAMPAIGNS=CAMPAIGNS.filter(x=>x.id!==id);logAct('حذف حملة: '+c.name);await persistCamp();go('campaigns');toast('تم حذف الحملة')}
+
+function renderCampaign(id){
+  currentCampId=id;const c=CAMPAIGNS.find(x=>x.id===id);const wrap=document.getElementById('v-campaign');if(!c){wrap.innerHTML='<div class="empty-state"><h3>الحملة غير موجودة</h3></div>';return}
+  const committed=c.members.filter(m=>['معتمد','تم النشر'].includes(m.status)).reduce((a,m)=>a+(m.agreedPrice||0),0);
+  const vat=Math.round(committed*VAT),total=committed+vat;
+  const remaining=c.budget!=null?c.budget-committed:null;
+  const cs=c.status==='نشطة'?'cs-active':c.status==='منتهية'?'cs-done':'cs-draft';
+  const approved=c.members.filter(m=>['معتمد','تم النشر'].includes(m.status)).length;
+  const rows=c.members.map(m=>{const r=DATA.find(d=>d.id===m.influencerId);if(!r)return'';const hasPhone=!!normalizePhone(r.phone);
+    return `<div class="mrow">
+      <div class="who"><span class="badge ${platformClass(r.platform)}">${esc(r.platform||'—')}</span><span class="iname">${esc(r.name)}</span></div>
+      <select class="msel" onchange="setService('${m.influencerId}',this.value)" title="نوع الخدمة"><option value="">الخدمة</option><option ${m.serviceType==='أونلاين'?'selected':''}>أونلاين</option><option ${m.serviceType==='حضوري'?'selected':''}>حضوري</option></select>
+      <input class="mprice num" type="number" value="${m.agreedPrice??''}" placeholder="السعر المتفق" onchange="setPriceM('${m.influencerId}',this.value)">
+      <button class="btn sm" onclick="pullPrice('${m.influencerId}')" title="جلب السعر من القاعدة">جلب</button>
+      <select class="msel ${statusClass(m.status)}" onchange="setStatus('${m.influencerId}',this.value)" style="font-weight:700">${STATUSES.map(s=>`<option ${m.status===s?'selected':''}>${s}</option>`).join('')}</select>
+      <div class="rowact" style="margin-inline-start:auto">
+        <button class="btn sm primary" onclick="openResp('${c.id}','${m.influencerId}')">مساعد الرد</button>
+        <button class="icon-btn waic ${hasPhone?'':'dis'}" ${hasPhone?`onclick="campWa('${c.id}','${m.influencerId}')"`:''} title="واتساب"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zM6.597 20.13c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.107zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.71.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg></button>
+        <button class="icon-btn del" onclick="removeMember('${m.influencerId}')" title="إزالة من الحملة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div></div>`;
+  }).join('')||'<div class="empty-state"><h3>لا يوجد مؤثرون</h3><p>أضف مؤثرين للحملة من زر التعديل.</p></div>';
+  wrap.innerHTML=`<button class="btn sm" onclick="go('campaigns')" style="margin-bottom:14px">← كل الحملات</button>
+    <div class="camp-detail">
+      <div class="cd-head"><div><h2>${esc(c.name)} <span class="cstatus ${cs}">${esc(c.status)}</span></h2><div class="client">${c.client?esc(c.client):'بدون عميل'} · ${c.members.length} مؤثر · معتمد ${approved}</div></div>
+        <div class="cd-acts"><button class="btn primary" onclick="sendPriceRequests('${c.id}')" title="يرسل قالب واتساب لكل مؤثر له رقم، ويستقبل الأسعار تلقائياً"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>اطلب الأسعار (واتساب)</button><button class="btn" onclick="openCampModal('${c.id}')">تعديل / إضافة مؤثرين</button><button class="btn" onclick="exportCampaign('${c.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 12l-4-4m4 4l4-4M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2"/></svg>تصدير Excel</button><button class="btn" onclick="deleteCampaign('${c.id}')" style="color:var(--neg)">حذف</button></div></div>
+      <div class="cd-brief">${esc(c.brief)}</div>
+      <div class="budget">
+        <div class="bcell"><div class="l">الميزانية المستهدفة</div><input class="num" type="number" value="${c.budget??''}" placeholder="—" onchange="setBudget('${c.id}',this.value)"></div>
+        <div class="bcell"><div class="l">إجمالي المعتمد</div><div class="v num">${fmt(committed)}</div></div>
+        <div class="bcell"><div class="l">ضريبة 15%</div><div class="v num">${fmt(vat)}</div></div>
+        <div class="bcell"><div class="l">الإجمالي شامل الضريبة</div><div class="v num">${fmt(total)}</div></div>
+        <div class="bcell"><div class="l">المتبقّي من الميزانية</div><div class="v num ${remaining==null?'':remaining<0?'neg':'pos'}">${remaining==null?'—':fmt(remaining)}</div></div>
+      </div>
+      <div>${rows}</div>
+    </div>`;
+}
+async function setStatus(iid,val){const c=CAMPAIGNS.find(x=>x.id===currentCampId);const m=c.members.find(x=>x.influencerId===iid);const r=DATA.find(d=>d.id===iid);m.status=val;logAct(`حالة "${r?r.name:''}" في "${c.name}" → ${val}`);await persistCamp();renderCampaign(currentCampId)}
+async function setService(iid,val){const c=CAMPAIGNS.find(x=>x.id===currentCampId);c.members.find(x=>x.influencerId===iid).serviceType=val;await persistCamp();renderCampaign(currentCampId)}
+async function setPriceM(iid,val){const c=CAMPAIGNS.find(x=>x.id===currentCampId);c.members.find(x=>x.influencerId===iid).agreedPrice=val===''?null:Number(val);await persistCamp();renderCampaign(currentCampId)}
+function pullPrice(iid){const c=CAMPAIGNS.find(x=>x.id===currentCampId);const m=c.members.find(x=>x.influencerId===iid);const r=DATA.find(d=>d.id===iid);if(!r)return;let p=m.serviceType==='حضوري'?r.visit:m.serviceType==='أونلاين'?r.online:(r.online??r.visit);if(p==null){toast('لا يوجد سعر مسجّل لهذا النوع');return}m.agreedPrice=p;persistCamp();renderCampaign(currentCampId);toast('تم جلب السعر من القاعدة')}
+async function setBudget(cid,val){const c=CAMPAIGNS.find(x=>x.id===cid);c.budget=val===''?null:Number(val);await persistCamp();renderCampaign(cid)}
+async function removeMember(iid){const c=CAMPAIGNS.find(x=>x.id===currentCampId);const r=DATA.find(d=>d.id===iid);if(!confirm(`إزالة "${r?r.name:''}" من الحملة؟`))return;c.members=c.members.filter(x=>x.influencerId!==iid);logAct(`إزالة "${r?r.name:''}" من "${c.name}"`);await persistCamp();renderCampaign(currentCampId)}
+function campWa(cid,iid){const r=DATA.find(d=>d.id===iid),c=CAMPAIGNS.find(x=>x.id===cid);if(!r)return;window.open(waLink(r.phone,`السلام عليكم ${r.name} 👋\nمعك فريق أهداف، عندنا حملة "${c.name}" ونحب نتعاون معك. ممكن نعرف جاهزيتك وأسعارك؟ وأي استفسار أنا حاضر.`),'_blank')}
+async function sendPriceRequests(cid){
+  const c=CAMPAIGNS.find(x=>x.id===cid);if(!c)return;
+  if(!WORKER_URL||WORKER_URL.indexOf('PASTE')>=0){toast('لم يتم ربط واتساب بعد');return}
+  if(!USE_FB){toast('يتطلب وضع Firebase لاستقبال الردود');return}
+  const recipients=c.members.map(m=>{const r=DATA.find(d=>d.id===m.influencerId);return r&&normalizePhone(r.phone)?{phone:r.phone,name:r.name,influencerId:m.influencerId}:null}).filter(Boolean);
+  if(!recipients.length){toast('لا يوجد مؤثرون بأرقام جوال في الحملة');return}
+  if(!confirm(`إرسال طلب السعر عبر واتساب إلى ${recipients.length} مؤثر؟`))return;
+  toast('جارٍ الإرسال...');
+  try{
+    const res=await fetch(WORKER_URL.replace(/\/?$/,'/')+'send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({campaignId:c.id,campaignName:c.name,recipients})});
+    const d=await res.json();
+    if(d.ok){logAct(`إرسال طلب أسعار واتساب لحملة "${c.name}" (${d.sent}/${d.total})`);
+      const failed=(d.results||[]).filter(r=>!r.ok);
+      toast(`أُرسل ${d.sent} من ${d.total}`+(failed.length?` · فشل ${failed.length}`:''));
+      if(failed.length)console.warn('فشل الإرسال:',failed);
+      c.members.forEach(m=>{if(recipients.some(rc=>rc.influencerId===m.influencerId)&&m.status==='مرشح')m.status='تم التواصل'});
+      await persistCamp();renderCampaign(cid);
+    } else { toast('تعذّر الإرسال: '+(d.error||'')); }
+  }catch(e){console.error(e);toast('خطأ في الاتصال بالخادم')}
+}
+function exportCampaign(cid){const c=CAMPAIGNS.find(x=>x.id===cid);if(!c)return;const aoa=c.members.map(m=>{const r=DATA.find(d=>d.id===m.influencerId)||{};return{'المؤثر':r.name||'',  'المنصة':r.platform||'','التصنيف':r.category||'','الشريحة':r.tier||'','المتابعين':r.followersText||'','نوع الخدمة':m.serviceType||'','السعر المتفق':m.agreedPrice??'','الحالة':m.status,'الجوال':r.phone||''}});const committed=c.members.filter(m=>['معتمد','تم النشر'].includes(m.status)).reduce((a,m)=>a+(m.agreedPrice||0),0);aoa.push({});aoa.push({'المؤثر':'الإجمالي المعتمد','السعر المتفق':committed});aoa.push({'المؤثر':'ضريبة 15%','السعر المتفق':Math.round(committed*VAT)});aoa.push({'المؤثر':'الإجمالي شامل الضريبة','السعر المتفق':committed+Math.round(committed*VAT)});const ws=XLSX.utils.json_to_sheet(aoa,{header:['المؤثر','المنصة','التصنيف','الشريحة','المتابعين','نوع الخدمة','السعر المتفق','الحالة','الجوال']});ws['!cols']=[{wch:22},{wch:10},{wch:16},{wch:13},{wch:12},{wch:10},{wch:13},{wch:13},{wch:14}];const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'الحملة');XLSX.writeFile(wb,'حملة_'+c.name.replace(/[^\u0600-\u06ff a-z0-9]/gi,'_')+'.xlsx');toast('تم تصدير الحملة')}
+
+// ---------- STATS ----------
+function barChart(title,obj,fmtVal){const ent=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,10);const max=Math.max(1,...ent.map(e=>e[1]));return `<div class="chartcard"><h3>${title}</h3>${ent.length?ent.map(([k,v])=>`<div class="bar-row"><div class="bar-lbl" title="${esc(k)}">${esc(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%"></div></div><div class="bar-val num">${fmtVal?fmtVal(v):v}</div></div>`).join(''):'<div style="color:var(--faint);font-size:13px">لا بيانات</div>'}</div>`}
+function renderStats(){
+  const byPlat={},byTier={},byCat={},byGender={};
+  DATA.forEach(d=>{if(d.platform)byPlat[d.platform]=(byPlat[d.platform]||0)+1;if(d.tier)byTier[d.tier]=(byTier[d.tier]||0)+1;if(d.category)byCat[d.category]=(byCat[d.category]||0)+1;if(d.gender)byGender[d.gender]=(byGender[d.gender]||0)+1});
+  const on=DATA.map(d=>d.online).filter(v=>v!=null),vi=DATA.map(d=>d.visit).filter(v=>v!=null);
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
+  const campStatus={};CAMPAIGNS.forEach(c=>c.members.forEach(m=>campStatus[m.status]=(campStatus[m.status]||0)+1));
+  const wrap=document.getElementById('v-stats');
+  wrap.innerHTML=`<div class="section-h"><h2>الإحصائيات</h2></div>
+    <div class="stats">
+      <div class="stat"><div class="lbl">إجمالي المؤثرين</div><div class="val num">${DATA.length}</div></div>
+      <div class="stat b"><div class="lbl">متوسط سعر أونلاين</div><div class="val num">${fmt(avg(on))}</div><div class="sub">${on.length} مسعّر</div></div>
+      <div class="stat p"><div class="lbl">متوسط سعر حضوري</div><div class="val num">${fmt(avg(vi))}</div><div class="sub">${vi.length} مسعّر</div></div>
+      <div class="stat g"><div class="lbl">الحملات</div><div class="val num">${CAMPAIGNS.length}</div></div>
+    </div>
+    <div class="charts-grid">
+      ${barChart('التوزيع حسب المنصة',byPlat)}
+      ${barChart('التوزيع حسب الشريحة',byTier)}
+      ${barChart('أكثر التصنيفات',byCat)}
+      ${barChart('حالات المؤثرين عبر الحملات',campStatus)}
+    </div>`;
+}
+
+// ---------- ACTIVITY ----------
+function renderActivity(){const el=document.getElementById('actList');el.innerHTML=ACTIVITY.length?ACTIVITY.map(a=>`<div class="act-item"><div class="act-dot"></div><div><div class="act-txt">${esc(a.text)}</div><div class="act-time">${new Date(a.ts).toLocaleString('ar-SA')}</div></div></div>`).join(''):'<div class="empty-state"><h3>لا نشاط بعد</h3></div>'}
+async function clearActivity(){if(!confirm('مسح كل سجل النشاط؟'))return;ACTIVITY=[];await persistAct();renderActivity()}
+
+// ---------- price replies inbox (fed by the Cloud Function) ----------
+function findMatch(rep){
+  const ph=normalizePhone(rep.phone);
+  let m=ph?DATA.find(d=>normalizePhone(d.phone)===ph):null;
+  if(!m&&rep.name)m=DATA.find(d=>normName(d.name)===normName(rep.name));
+  return m;
+}
+function renderReplies(){
+  const wrap=document.getElementById('repliesWrap');
+  if(!USE_FB){wrap.innerHTML='<div class="tablecard"><div class="empty-state"><h3>الصندوق يعمل بعد ربط Firebase</h3><p>افتح النسخة المستضافة بعد لصق إعداد Firebase ونشر الـ Cloud Function.</p></div></div>';return}
+  const list=REPLIES.filter(r=>r.status==='new');
+  if(!list.length){wrap.innerHTML='<div class="tablecard"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg><h3>لا توجد ردود جديدة</h3><p>أي سعر يرسله المؤثر عبر واتساب يظهر هنا للمراجعة.</p></div></div>';return}
+  wrap.innerHTML=`<div class="tablecard">${list.map(r=>{
+    const m=findMatch(r);
+    return `<div class="mrow" style="align-items:flex-start">
+      <div style="flex:1;min-width:200px">
+        <div class="iname">${esc(r.name||'(بدون اسم)')} ${r.needs_review?'<span class="stat-badge st-انتظار">يحتاج مراجعة</span>':''}</div>
+        <div class="isub">${esc(r.phone||'')} ${m?'· <span class="campcount">مطابق: '+esc(m.name)+'</span>':'· <span style="color:var(--neg)">غير مطابق بالقاعدة</span>'}${(()=>{const c=r.campaignId?CAMPAIGNS.find(x=>x.id===r.campaignId):null;return c?' · <span class="campcount">حملة: '+esc(c.name)+'</span>':''})()}</div>
+        <div class="inotes" style="max-width:520px">"${esc(r.raw||'')}"</div>
+        ${r.note?`<div class="isub">ملاحظة المساعد: ${esc(r.note)}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+        <div style="display:flex;gap:6px;align-items:center"><span class="isub" style="width:54px">أونلاين</span><input class="mprice num" type="number" id="rep_on_${r._id}" value="${r.online??''}"></div>
+        <div style="display:flex;gap:6px;align-items:center"><span class="isub" style="width:54px">حضوري</span><input class="mprice num" type="number" id="rep_vi_${r._id}" value="${r.visit??''}"></div>
+      </div>
+      <div class="rowact" style="flex-direction:column">
+        <button class="btn sm primary" onclick="applyReply('${r._id}')">${m?'تطبيق على '+esc(m.name.slice(0,12)):'حفظ كمؤثر جديد'}</button>
+        <button class="btn sm" onclick="dismissReply('${r._id}')">تجاهل</button>
+      </div></div>`;
+  }).join('')}</div>`;
+}
+async function applyReply(id){
+  if(!USE_FB||!db)return;
+  const r=REPLIES.find(x=>x._id===id);if(!r)return;
+  const on=document.getElementById('rep_on_'+id).value, vi=document.getElementById('rep_vi_'+id).value;
+  const online=on===''?null:Number(on), visit=vi===''?null:Number(vi);
+  let m=findMatch(r);
+  if(m){ if(online!=null)m.online=online; if(visit!=null)m.visit=visit; m.notes=[m.notes,'سعر من واتساب: '+(r.raw||'').slice(0,60)].filter(Boolean).join(' · '); logAct('تطبيق سعر من واتساب على: '+m.name); }
+  else { m={id:uid(),name:r.name||'مؤثر جديد',platform:'سناب',category:'',gender:'',tier:'',followersText:'',followersNum:null,platform2:'',followers2:'',online,visit,phone:r.phone||'',notes:'مضاف من رد واتساب: '+(r.raw||'').slice(0,60),favorite:false,source:'واتساب'}; DATA.unshift(m); logAct('إضافة مؤثر من رد واتساب: '+(r.name||'')); }
+  await persist();
+  // تعبئة السعر المتفق في الحملة لو الرد مربوط بحملة
+  const c=r.campaignId?CAMPAIGNS.find(x=>x.id===r.campaignId):null;
+  if(c){ let mem=c.members.find(x=>x.influencerId===(r.influencerId||m.id));
+    if(!mem&&r.influencerId)mem=null;
+    if(mem){ const price=mem.serviceType==='حضوري'?visit:mem.serviceType==='أونلاين'?online:(online??visit);
+      if(price!=null){mem.agreedPrice=price; if(mem.status==='تم التواصل'||mem.status==='بانتظار الرد'||mem.status==='مرشح')mem.status='تفاوض'; mem.notes=[mem.notes,'سعر واتساب: '+(r.raw||'').slice(0,40)].filter(Boolean).join(' · ');}
+      await persistCamp(); logAct(`سعر واتساب في حملة "${c.name}": ${m.name} = ${price!=null?fmt(price):'—'}`);
+    }
+  }
+  try{await db.collection('price_replies').doc(id).update({status:'applied'});}catch(e){console.error(e)}
+  toast(c?'تم تطبيق السعر في الحملة':'تم تطبيق السعر'); renderReplies(); updateRepliesBadge();
+}
+async function dismissReply(id){if(!USE_FB||!db)return;try{await db.collection('price_replies').doc(id).update({status:'dismissed'});}catch(e){console.error(e)}toast('تم التجاهل');renderReplies();updateRepliesBadge()}
+
+// ---------- backup / restore ----------
+function backupData(){const blob=new Blob([JSON.stringify({version:4,exportedAt:new Date().toISOString(),influencers:DATA,campaigns:CAMPAIGNS,activity:ACTIVITY},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='نسخة_أهداف_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('تم تنزيل النسخة الاحتياطية')}
+function restoreData(ev){const file=ev.target.files[0];if(!file)return;if(!confirm('الاسترجاع سيستبدل كل البيانات الحالية. متابعة؟')){ev.target.value='';return}const reader=new FileReader();reader.onload=async e=>{try{const d=JSON.parse(e.target.result);DATA=d.influencers||[];CAMPAIGNS=d.campaigns||[];ACTIVITY=d.activity||[];DATA.forEach(x=>{if(x.favorite===undefined)x.favorite=false});await persist();await persistCamp();await persistAct();logAct('استرجاع نسخة احتياطية');go('home');toast('تم الاسترجاع بنجاح')}catch(err){console.error(err);toast('ملف غير صالح')}ev.target.value=''};reader.readAsText(file)}
+
+// ---------- AI responder ----------
+function openResp(cid,iid){const c=CAMPAIGNS.find(x=>x.id===cid),r=DATA.find(d=>d.id===iid);if(!c||!r)return;respState={campaign:c,influencer:r,history:[]};document.getElementById('respTitle').textContent='مساعد الرد — '+r.name;document.getElementById('respSub').textContent='حملة: '+c.name;document.getElementById('respInput').value='';document.getElementById('transcript').innerHTML='';document.getElementById('respOverlay').classList.add('show');setTimeout(()=>document.getElementById('respInput').focus(),50)}
+function closeResp(){document.getElementById('respOverlay').classList.remove('show');respState=null}
+function renderTranscript(){const t=document.getElementById('transcript');t.innerHTML=respState.history.map(turn=>turn.role==='user'?`<div class="bubble inf"><div class="who">المؤثر</div>${esc(turn.text)}</div>`:`<div class="bubble ag"><div class="who">الرد المقترح</div>${esc(turn.text)}<div class="reply-acts"><button class="btn" onclick="copyReply(this)" data-t="${esc(turn.text)}">نسخ</button><button class="btn wa" onclick="sendReplyWa('${encodeURIComponent(turn.text)}')">فتح واتساب</button></div></div>`).join('');t.scrollTop=t.scrollHeight}
+function copyReply(btn){navigator.clipboard.writeText(btn.getAttribute('data-t')).then(()=>toast('تم نسخ الرد'))}
+function sendReplyWa(enc){const text=decodeURIComponent(enc),r=respState.influencer;if(!normalizePhone(r.phone)){toast('لا يوجد رقم جوال');return}window.open(waLink(r.phone,text),'_blank')}
+async function askAgent(){const inp=document.getElementById('respInput'),q=inp.value.trim();if(!q){toast('اكتب رسالة المؤثر أولاً');return}if(!respState)return;respState.history.push({role:'user',text:q});inp.value='';renderTranscript();const t=document.getElementById('transcript'),think=document.createElement('div');think.className='thinking';think.innerHTML='<span class="spin"></span> المساعد يكتب الرد...';t.appendChild(think);t.scrollTop=t.scrollHeight;const btn=document.getElementById('askBtn');btn.disabled=true;const c=respState.campaign,r=respState.influencer;const ctx=[r.platform&&'المنصة '+r.platform,r.category&&'التصنيف '+r.category,r.tier&&'الشريحة '+r.tier,r.followersText&&'المتابعين '+r.followersText].filter(Boolean).join(' — ');
+  const sys=`أنت مساعد ردود لوكالة "أهداف للخدمات التسويقية" (وكالة تسويق سعودية). مهمتك: الرد على رسائل واستفسارات مؤثر بخصوص حملة إعلانية، بالعربية وبلهجة خليجية مهنية ومهذبة وودّية.
+
+سياق الحملة (مصدرك الوحيد للمعلومات):
+"""${c.brief}"""
+
+بيانات المؤثر: ${r.name}${ctx?' — '+ctx:''}.
+
+قواعد صارمة:
+- لا تخترع أي معلومة أو سعر أو شرط أو موعد غير موجود في بريف الحملة. إذا سُئلت عن تفصيل غير محدد، قل بأدب إنك ستؤكده مع الفريق وترجع له، أو اطلب من المؤثر يشاركك عرضه/سعره.
+- لا تذكر أي أسعار داخلية. التفاوض النهائي والعقد يُحوّل لمسؤول بشري — اقترح ذلك بلطف.
+- اكتب رداً واحداً مختصراً واضحاً جاهزاً للإرسال مباشرة عبر واتساب، بدون عناوين أو أقواس توضيحية.`;
+  const messages=respState.history.map(h=>({role:h.role==='user'?'user':'assistant',content:h.text}));
+  const AI_URL=(WORKER_URL&&WORKER_URL.indexOf('PASTE')<0)?WORKER_URL:'https://api.anthropic.com/v1/messages';
+  try{const res=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sys,messages})});const data=await res.json();const reply=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim()||'تعذّر توليد الرد.';respState.history.push({role:'assistant',text:reply})}catch(err){console.error(err);respState.history.push({role:'assistant',text:'⚠️ تعذّر الاتصال بمساعد الردود. تأكد من ضبط رابط الـWorker (WORKER_URL) ومن وجود رصيد في مفتاح Anthropic.'})}
+  think.remove();btn.disabled=false;renderTranscript()}
+
+['overlay','campOverlay','respOverlay'].forEach(id=>document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)e.target.classList.remove('show')}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')['overlay','campOverlay','respOverlay'].forEach(id=>document.getElementById(id).classList.remove('show'))});
+(async function(){await loadAll();go('home')})();
+</script>
+</body>
+</html>

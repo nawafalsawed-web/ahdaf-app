@@ -1,0 +1,7 @@
+node_modules/
+.wwebjs_auth/
+.wwebjs_cache/
+projecto.config.json
+projecto-data.json
+projecto-shots/
+*.log
