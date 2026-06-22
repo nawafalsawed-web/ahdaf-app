@@ -46,8 +46,8 @@
 <body>
   <div class="card">
     <div class="logo">أهداف</div>
-    <h1>ربط واتساب</h1>
-    <p class="sub">رقم واحد مشترك يسوّي القروبات ويرسل الإشعارات.<br>أي أحد بالفريق يقدر يربطه من هنا.</p>
+    <h1>ربط واتسابك</h1>
+    <p class="sub">اربط رقمك الخاص — تشوف <b>قروباتك أنت فقط</b><br>وتنشئ قروبات وترسل من رقمك.</p>
     <div class="qr-box" id="box"><div class="spin"></div></div>
   </div>
 
@@ -63,9 +63,9 @@
         const st = await (await fetch(BOT+'/status',{cache:'no-store'})).json();
         if(st.ready){
           key='ready';
-          html = `<div class="ok"><span class="big">✓</span>الواتساب مربوط</div>
-            <p class="note">البوت جاهز — القروبات والإشعارات تشتغل الحين.</p>
-            <button class="relink" onclick="relink()">ربط رقم ثاني (يفصل الحالي)</button>`;
+          html = `<div class="ok"><span class="big">✓</span>رقمك مربوط</div>
+            <p class="note">قروباتك جاهزة — تنشئ وترسل من رقمك.</p>
+            <button class="relink" onclick="relink()">تغيير رقمي (إعادة ربط)</button>`;
         }else if(st.hasQr){
           key='qr:'+st.qrV;
           html = `<img class="qr-img" src="${BOT}/qr?v=${st.qrV}" alt="باركود"

@@ -12,33 +12,37 @@ const QRImage = require('qrcode');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 
 const PORT = process.env.PORT || 3000;
-const VERSION = 'v8 — إشعارات العروض';
-let ready = false;
-let lastQr = null;
-let qrV = 0;
+const VERSION = 'v9 — جلسة لكل عضو';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 console.log('\n╔══════════════════════════════════════╗');
 console.log('   بوت أهداف — ' + VERSION);
 console.log('╚══════════════════════════════════════╝\n');
 
-const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '.wwebjs_auth') }),
-  puppeteer: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] }
-});
+// جلسة واتساب مستقلة لكل عضو (مفتاحها البريد) — كل عضو يربط رقمه ويشوف قروباته
+const sessions = new Map(); // email -> { client, ready, lastQr, qrV }
+const sid = email => 'u_' + String(email).replace(/[^a-z0-9]/gi, '_').slice(0, 40);
 
-client.on('qr', qr => {
-  lastQr = qr; ready = false; qrV++;
-  console.log(`\n📱 باركود #${qrV} — افتح واتساب → الأجهزة المرتبطة → ربط جهاز، وامسح:\n`);
-  qrcode.generate(qr, { small: true });
-});
-client.on('loading_screen', (p, m) => console.log(`⏳ تحميل واتساب: ${p}% ${m || ''}`));
-client.on('change_state', s => console.log('↻ تغيّر الحالة إلى:', s));
-client.on('authenticated', () => console.log('\n✅✅ تم مسح الباركود والمصادقة — جاري التحميل…\n'));
-client.on('ready', () => { ready = true; lastQr = null; console.log('\n🤖 البوت جاهز — يستقبل طلبات إنشاء القروبات\n'); });
-client.on('auth_failure', m => console.error('✗ فشل المصادقة:', m));
-client.on('disconnected', r => { ready = false; console.log('✗ انقطع الاتصال:', r); });
-client.initialize();
+function getSession(email) {
+  let s = sessions.get(email);
+  if (s) return s;
+  s = { client: null, ready: false, lastQr: null, qrV: 0 };
+  sessions.set(email, s);
+  const client = new Client({
+    authStrategy: new LocalAuth({ clientId: sid(email), dataPath: path.join(__dirname, '.wwebjs_auth') }),
+    puppeteer: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] }
+  });
+  s.client = client;
+  client.on('qr', qr => { s.lastQr = qr; s.ready = false; s.qrV++; console.log(`📱 باركود #${s.qrV} لـ ${email}`); });
+  client.on('loading_screen', p => console.log(`⏳ ${email}: ${p}%`));
+  client.on('authenticated', () => console.log(`✅ مصادقة: ${email}`));
+  client.on('ready', () => { s.ready = true; s.lastQr = null; console.log(`🤖 جاهز: ${email}`); });
+  client.on('auth_failure', m => console.error(`✗ فشل مصادقة ${email}:`, m));
+  client.on('disconnected', r => { s.ready = false; console.log(`✗ انقطع ${email}:`, r); });
+  client.initialize().catch(e => console.error(`init error ${email}:`, e.message));
+  console.log(`+ جلسة جديدة لـ ${email}`);
+  return s;
+}
 
 const app = express();
 app.use(cors());
@@ -98,23 +102,29 @@ app.post('/auth/team/remove', requireAuth, (req, res) => {
   saveTeam(loadTeam().filter(x => normEmail(x.email) !== email)); res.json({ ok: true });
 });
 
-// حالة البوت (محمي)
-app.get('/status', requireAuth, (req, res) => res.json({ ready, hasQr: !!lastQr, qrV, version: VERSION }));
+// حالة جلسة العضو الحالي
+app.get('/status', requireAuth, (req, res) => {
+  const s = getSession(req.user.email);
+  res.json({ ready: s.ready, hasQr: !!s.lastQr, qrV: s.qrV, version: VERSION });
+});
 
-// الباركود كصورة PNG — يعرضه الموقع
+// باركود العضو الحالي
 app.get('/qr', requireAuth, async (req, res) => {
-  if (ready) return res.status(204).end();              // مربوط — لا حاجة لباركود
-  if (!lastQr) return res.status(404).json({ error: 'لا يوجد باركود بعد' });
+  const s = getSession(req.user.email);
+  if (s.ready) return res.status(204).end();
+  if (!s.lastQr) return res.status(404).json({ error: 'لا يوجد باركود بعد' });
   try {
-    const png = await QRImage.toBuffer(lastQr, { width: 320, margin: 1, color: { dark: '#1d1d22', light: '#ffffff' } });
+    const png = await QRImage.toBuffer(s.lastQr, { width: 320, margin: 1, color: { dark: '#1d1d22', light: '#ffffff' } });
     res.set('Cache-Control', 'no-store').type('png').send(png);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// إنشاء قروب
+// إنشاء قروب (من رقم العضو الحالي)
 app.post('/create-group', requireAuth, async (req, res) => {
   try {
-    if (!ready) return res.status(503).json({ ok: false, error: 'البوت مو جاهز — امسح الـQR أول' });
+    const s = getSession(req.user.email);
+    const client = s.client;
+    if (!s.ready) return res.status(503).json({ ok: false, error: 'واتسابك مو مربوط — اربط رقمك من صفحة الربط' });
 
     const { name, participants, picture } = req.body || {};
     if (!name) return res.status(400).json({ ok: false, error: 'اسم القروب مطلوب' });
@@ -185,44 +195,45 @@ app.post('/create-group', requireAuth, async (req, res) => {
   }
 });
 
-// قائمة القروبات (لاختيار قروب الطلبات/التعديلات/المعتمد)
+// قروبات العضو الحالي فقط
 app.get('/groups', requireAuth, async (req, res) => {
-  if (!ready) return res.status(503).json({ ok: false, error: 'البوت مو جاهز' });
+  const s = getSession(req.user.email);
+  if (!s.ready) return res.status(503).json({ ok: false, error: 'واتسابك مو مربوط' });
   try {
-    const chats = await client.getChats();
+    const chats = await s.client.getChats();
     const groups = chats.filter(c => c.isGroup).map(c => ({ id: c.id._serialized, name: c.name || '(بدون اسم)' }));
     res.json({ ok: true, groups });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// إرسال رسالة لقروب/جهة
+// إرسال رسالة من رقم العضو الحالي
 app.post('/send-message', requireAuth, async (req, res) => {
   try {
-    if (!ready) return res.status(503).json({ ok: false, error: 'البوت مو جاهز' });
+    const s = getSession(req.user.email);
+    if (!s.ready) return res.status(503).json({ ok: false, error: 'واتسابك مو مربوط' });
     const { chatId, text, media } = req.body || {};
     if (!chatId) return res.status(400).json({ ok: false, error: 'chatId مطلوب' });
     if (media && media.data) {
       const m = new MessageMedia(media.mimetype || 'application/octet-stream', media.data, media.filename || 'ملف');
-      await client.sendMessage(chatId, m, { caption: text || '' });
-      console.log(`📎 أُرسل ملف إلى ${chatId}`);
+      await s.client.sendMessage(chatId, m, { caption: text || '' });
     } else {
       if (!text) return res.status(400).json({ ok: false, error: 'text مطلوب' });
-      await client.sendMessage(chatId, text);
-      console.log(`✉️ أُرسلت رسالة إلى ${chatId}`);
+      await s.client.sendMessage(chatId, text);
     }
     res.json({ ok: true });
   } catch (e) { console.error('فشل الإرسال:', e.message); res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// فصل الرقم الحالي وإظهار باركود جديد (لربط رقم ثاني)
-app.post('/relink', requireAuth, (req, res) => {
+// فصل رقم العضو الحالي وإظهار باركود جديد (يربط رقم ثاني) — ما يأثر على بقية الأعضاء
+app.post('/relink', requireAuth, async (req, res) => {
+  const email = req.user.email;
   res.json({ ok: true });
-  console.log('↻ طلب ربط رقم ثاني — مسح الجلسة وإعادة التشغيل…');
-  setTimeout(async () => {
-    try { await client.logout().catch(() => {}); } catch {}
-    try { fs.rmSync(path.join(__dirname, '.wwebjs_auth'), { recursive: true, force: true }); } catch {}
-    process.exit(0);   // systemd يعيد التشغيل → جلسة نظيفة → باركود جديد
-  }, 600);
+  console.log(`↻ ${email}: فصل الرقم وإعادة الربط…`);
+  const s = sessions.get(email);
+  if (s && s.client) { try { await s.client.logout().catch(() => {}); } catch {} try { await s.client.destroy(); } catch {} }
+  sessions.delete(email);
+  try { fs.rmSync(path.join(__dirname, '.wwebjs_auth', 'session-' + sid(email)), { recursive: true, force: true }); } catch {}
+  setTimeout(() => getSession(email), 1500);   // جلسة نظيفة → باركود جديد
 });
 
 app.listen(PORT, () => console.log(`🌐 خادم البوت يعمل على http://localhost:${PORT}`));
