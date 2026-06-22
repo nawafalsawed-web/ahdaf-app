@@ -36,7 +36,13 @@ const store = {
 
 /* ---------- البوت (الأتمتة) ---------- */
 const bot = {
-  url(){ return (store.settings.botUrl || 'http://localhost:3000').replace(/\/$/,''); },
+  url(){
+    if(store.settings.botUrl) return store.settings.botUrl.replace(/\/$/,'');
+    // محلياً: بوت الجهاز · على الموقع المنشور: بوت السيرفر على نفس الدومين
+    return /^(localhost|127\.|192\.168\.|10\.|0\.0\.0\.0)/.test(location.hostname)
+      ? 'http://localhost:3000'
+      : location.origin + '/bot';
+  },
   async status(){
     const r = await fetch(this.url()+'/status', {cache:'no-store'});
     return r.json();
