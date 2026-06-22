@@ -156,6 +156,8 @@ main{padding:18px 16px calc(120px + var(--safe-bot));max-width:680px;margin:0 au
 .file-meta{font-size:12px;color:var(--muted);margin-top:2px}
 .file-del{width:36px;height:36px;border-radius:10px;color:#c0392b;display:grid;place-items:center;flex:none}
 .file-del:active{background:#fdecea}
+.file-act{width:36px;height:36px;border-radius:10px;color:var(--purple);display:grid;place-items:center;flex:none;text-decoration:none}
+.file-act:active{background:var(--purple-soft)}
 .file-attach{
   flex:1;min-width:0;background:#fafafb;border:1.5px dashed var(--line);border-radius:12px;
   padding:13px 14px;font-size:14px;color:var(--charcoal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;

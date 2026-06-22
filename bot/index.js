@@ -267,7 +267,8 @@ app.get('/files/:id', requireAuth, (req, res) => {
   const p = path.join(FILES_DIR, id);
   if (!meta || !fs.existsSync(p)) return res.status(404).end();
   res.setHeader('Content-Type', meta.type || 'application/octet-stream');
-  res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
+  const disp = req.query.dl ? 'attachment' : 'inline';   // dl=1 → تنزيل، وإلا عرض
+  res.setHeader('Content-Disposition', `${disp}; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
   fs.createReadStream(p).pipe(res);
 });
 

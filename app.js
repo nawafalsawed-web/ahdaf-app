@@ -685,12 +685,16 @@ async function loadArchiveFiles(){
 }
 
 function fileRow(f){
-  return `<div class="file-row" onclick="window.open('${bot.url()}/files/${esc(f.id)}','_blank')">
+  const url = bot.url()+'/files/'+esc(f.id);
+  return `<div class="file-row" onclick="window.open('${url}','_blank')">
       <span class="file-ic">${fileIcon(f.type)}</span>
       <div class="file-info">
         <div class="file-name">${esc(f.name)}</div>
         <div class="file-meta">${esc(fmtBytes(f.size))}</div>
       </div>
+      <a class="file-act" href="${url}?dl=1" download onclick="event.stopPropagation()" aria-label="تنزيل" title="تنزيل">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+      </a>
       <button class="file-del" onclick="event.stopPropagation();deleteArchiveFile('${esc(f.id)}')" aria-label="حذف">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 7h12v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7zm3-3h6l1 2h4v2H4V6h4l1-2z"/></svg>
       </button>
