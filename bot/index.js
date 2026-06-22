@@ -12,7 +12,7 @@ const QRImage = require('qrcode');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 
 const PORT = process.env.PORT || 3000;
-const VERSION = 'v9 — جلسة لكل عضو';
+const VERSION = 'v10 — ملفات على السيرفر';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 console.log('\n╔══════════════════════════════════════╗');
@@ -234,6 +234,48 @@ app.post('/relink', requireAuth, async (req, res) => {
   sessions.delete(email);
   try { fs.rmSync(path.join(__dirname, '.wwebjs_auth', 'session-' + sid(email)), { recursive: true, force: true }); } catch {}
   setTimeout(() => getSession(email), 1500);   // جلسة نظيفة → باركود جديد
+});
+
+// ===================== تخزين ملفات العروض (على السيرفر، مشتركة للفريق) =====================
+const FILES_DIR = process.env.FILES_DIR || '/var/ahdaf-files';
+try { fs.mkdirSync(FILES_DIR, { recursive: true }); } catch {}
+const FILES_INDEX = path.join(FILES_DIR, '_index.json');
+const loadFiles = () => { try { return JSON.parse(fs.readFileSync(FILES_INDEX, 'utf8')); } catch { return []; } };
+const saveFiles = f => fs.writeFileSync(FILES_INDEX, JSON.stringify(f, null, 2));
+const cleanId = s => String(s || '').replace(/[^a-z0-9]/gi, '');
+
+app.get('/files', requireAuth, (req, res) => res.json({ ok: true, files: loadFiles() }));
+
+app.post('/files', requireAuth, (req, res) => {
+  try {
+    const { name, type, data } = req.body || {};
+    if (!name || !data) return res.status(400).json({ ok: false, error: 'الملف ناقص' });
+    const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const buf = Buffer.from(data, 'base64');
+    fs.writeFileSync(path.join(FILES_DIR, id), buf);
+    const files = loadFiles();
+    const meta = { id, name, type: type || 'application/octet-stream', size: buf.length, by: req.user.email, ts: Date.now() };
+    files.unshift(meta); saveFiles(files);
+    console.log(`📁 ملف مرفوع: ${name} (${buf.length} bytes) بواسطة ${req.user.email}`);
+    res.json({ ok: true, file: meta });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/files/:id', requireAuth, (req, res) => {
+  const id = cleanId(req.params.id);
+  const meta = loadFiles().find(f => f.id === id);
+  const p = path.join(FILES_DIR, id);
+  if (!meta || !fs.existsSync(p)) return res.status(404).end();
+  res.setHeader('Content-Type', meta.type || 'application/octet-stream');
+  res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
+  fs.createReadStream(p).pipe(res);
+});
+
+app.post('/files/remove', requireAuth, (req, res) => {
+  const id = cleanId(req.body && req.body.id);
+  try { fs.unlinkSync(path.join(FILES_DIR, id)); } catch {}
+  saveFiles(loadFiles().filter(f => f.id !== id));
+  res.json({ ok: true });
 });
 
 app.listen(PORT, () => console.log(`🌐 خادم البوت يعمل على http://localhost:${PORT}`));

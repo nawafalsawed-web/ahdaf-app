@@ -648,20 +648,16 @@ function propsHome(){ propsView='home'; renderProposals(); }
 // أرشيف العروض: ملفات العروض + العروض المسجّلة تحتها
 function renderProposalArchive(){
   const view = $('#view');
-  const files = store.files || [];
   const all = store.proposals.slice().sort((a,b)=>(b.updatedAt||b.createdAt)-(a.updatedAt||a.createdAt));
   const backBar = `<button class="back-bar" onclick="propsHome()"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M14 7l-1.4 1.4L16.2 12l-3.6 3.6L14 17l5-5z"/></svg> رجوع</button>`;
 
   let html = backBar;
-
-  // قسم الملفات
+  // قسم الملفات (على السيرفر — مشتركة للفريق)
   html += `<div class="arch-head">
       <span class="arch-title">ملفات العروض</span>
       <button class="btn-soft" onclick="pickArchiveFile()">＋ إضافة ملف</button>
     </div>`;
-  html += files.length
-    ? files.map(fileRow).join('')
-    : `<div class="arch-empty">ما فيه ملفات بعد — أضف عروضك المحفوظة (PDF، صور، Word…).</div>`;
+  html += `<div id="filesList"><div class="arch-empty">جاري التحميل…</div></div>`;
 
   // العروض المسجّلة
   html += `<div class="group-label" style="margin-top:26px">
@@ -672,16 +668,30 @@ function renderProposalArchive(){
     : `<div class="arch-empty">لا توجد عروض مسجّلة بعد.</div>`;
 
   view.innerHTML = html;
+  loadArchiveFiles();
+}
+
+async function loadArchiveFiles(){
+  const el = $('#filesList'); if(!el) return;
+  try{
+    const r = await fetch(bot.url()+'/files', {credentials:'same-origin'});
+    if(r.status===401){ el.innerHTML = '<div class="arch-empty">سجّل الدخول لرؤية الملفات</div>'; return; }
+    const d = await r.json();
+    const files = d.files||[];
+    el.innerHTML = files.length
+      ? files.map(fileRow).join('')
+      : '<div class="arch-empty">ما فيه ملفات بعد — أضف عروضك المحفوظة (PDF، صور، Word…).</div>';
+  }catch{ el.innerHTML = '<div class="arch-empty">تعذّر تحميل الملفات — تأكد من اتصال السيرفر</div>'; }
 }
 
 function fileRow(f){
-  return `<div class="file-row" onclick="openStoredFile('${f.id}')">
+  return `<div class="file-row" onclick="window.open('${bot.url()}/files/${esc(f.id)}','_blank')">
       <span class="file-ic">${fileIcon(f.type)}</span>
       <div class="file-info">
         <div class="file-name">${esc(f.name)}</div>
         <div class="file-meta">${esc(fmtBytes(f.size))}</div>
       </div>
-      <button class="file-del" onclick="event.stopPropagation();deleteArchiveFile('${f.id}')" aria-label="حذف">
+      <button class="file-del" onclick="event.stopPropagation();deleteArchiveFile('${esc(f.id)}')" aria-label="حذف">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 7h12v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7zm3-3h6l1 2h4v2H4V6h4l1-2z"/></svg>
       </button>
     </div>`;
@@ -691,15 +701,19 @@ async function pickArchiveFile(){
   const file = await pickFile();
   if(!file) return;
   if(file.size > 25*1048576){ toast('الملف كبير (أكثر من 25MB)'); return; }
+  toast('جاري الرفع…');
   try{
-    const id = newFileId();
-    await filedb.put(id, file);
-    store.addFile({ id, name:file.name, size:file.size, type:file.type, addedAt:Date.now() });
-    toast('أُضيف الملف ✓'); renderProposals();
-  }catch{ toast('تعذّر حفظ الملف'); }
+    const data = await blobToBase64(file);
+    const r = await fetch(bot.url()+'/files', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ name:file.name, type:file.type, data })});
+    const d = await r.json();
+    if(d.ok){ toast('أُضيف الملف ✓'); loadArchiveFiles(); }
+    else{ toast(d.error||'تعذّر الرفع'); }
+  }catch{ toast('تعذّر رفع الملف — تأكد من اتصال السيرفر'); }
 }
 async function deleteArchiveFile(id){
-  await filedb.del(id); store.removeFile(id); toast('تم حذف الملف'); renderProposals();
+  try{ await fetch(bot.url()+'/files/remove', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({id})}); }catch{}
+  toast('تم حذف الملف'); loadArchiveFiles();
 }
 
 function proposalCard(p){
