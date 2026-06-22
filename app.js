@@ -428,8 +428,8 @@ function openSettings(){
 
     <div class="field">
       <label>رابط البوت</label>
-      <input id="s_url" value="${esc(s.botUrl||'http://localhost:3000')}" dir="ltr" style="text-align:left">
-      <div class="hint">عادةً http://localhost:3000 لما يكون البوت شغّال على الجهاز.</div>
+      <input id="s_url" value="${esc(bot.url())}" dir="ltr" style="text-align:left">
+      <div class="hint">يُضبط تلقائياً: بوت السيرفر على الموقع، أو localhost على جهازك.</div>
     </div>
 
     <div class="link-box" id="linkArea">
