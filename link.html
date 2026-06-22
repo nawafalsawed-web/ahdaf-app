@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4C0192">
+<title>ربط واتساب أهداف</title>
+<style>
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{--purple:#4C0192;--bg:#f6f5f8;--ink:#1d1d22;--muted:#7a7a85;--line:#ececef;--green:#1f9d55}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Saudi Serif",-apple-system,"SF Arabic","Segoe UI",Tahoma,sans-serif;
+    background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:22px;max-width:440px;width:100%;
+    padding:30px 26px;text-align:center;box-shadow:0 4px 24px rgba(40,10,80,.07)}
+  .logo{font-size:26px;font-weight:700;color:var(--purple);margin-bottom:6px}
+  h1{font-size:21px;margin-bottom:6px}
+  .sub{color:var(--muted);font-size:14.5px;margin-bottom:22px;line-height:1.7}
+  .qr-box{min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  .qr-img{width:280px;height:280px;border-radius:18px;border:1px solid var(--line);padding:12px;background:#fff}
+  .steps{text-align:right;background:#faf9fc;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:18px;font-size:14px;line-height:2}
+  .steps b{color:var(--purple)}
+  .ok{color:var(--green);font-size:20px;font-weight:700}
+  .ok .big{font-size:48px;display:block;margin-bottom:8px}
+  .wait{color:var(--muted);font-size:15px}
+  .err{color:#c0392b;font-size:14.5px;line-height:1.8}
+  .spin{width:34px;height:34px;border:3px solid #eee;border-top-color:var(--purple);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .relink{margin-top:20px;background:none;border:1px solid var(--line);color:var(--muted);font-family:inherit;
+    font-size:13.5px;padding:10px 18px;border-radius:12px;cursor:pointer}
+  .relink:active{background:#faf9fc}
+  .badge{display:inline-block;background:#fdecea;color:#c0392b;font-size:12px;padding:3px 12px;border-radius:20px;margin-top:14px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.7}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">أهداف</div>
+    <h1>ربط واتساب</h1>
+    <p class="sub">رقم واحد مشترك يسوّي القروبات ويرسل الإشعارات.<br>أي أحد بالفريق يقدر يربطه من هنا.</p>
+    <div class="qr-box" id="box"><div class="spin"></div></div>
+  </div>
+
+  <script>
+    const BOT = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname)
+      ? 'http://localhost:3000' : location.origin + '/bot';
+    const box = document.getElementById('box');
+    let lastKey = '';
+
+    async function tick(){
+      let key, html;
+      try{
+        const st = await (await fetch(BOT+'/status',{cache:'no-store'})).json();
+        if(st.ready){
+          key='ready';
+          html = `<div class="ok"><span class="big">✓</span>الواتساب مربوط</div>
+            <p class="note">البوت جاهز — القروبات والإشعارات تشتغل الحين.</p>
+            <button class="relink" onclick="relink()">ربط رقم ثاني (يفصل الحالي)</button>`;
+        }else if(st.hasQr){
+          key='qr:'+st.qrV;
+          html = `<img class="qr-img" src="${BOT}/qr?v=${st.qrV}" alt="باركود"
+                    onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'wait',textContent:'⏳ جاري توليد الباركود…'}))">
+            <div class="steps">
+              <b>1.</b> افتح <b>واتساب</b> في جوالك<br>
+              <b>2.</b> الإعدادات ← <b>الأجهزة المرتبطة</b><br>
+              <b>3.</b> <b>ربط جهاز</b> ← وجّه الكاميرا على الباركود<br>
+            </div>
+            <div class="badge">⚠️ افتح هذي الصفحة على شاشة، وامسح بجوال ثاني</div>`;
+        }else{
+          key='wait';
+          html = `<div class="spin"></div><p class="wait">⏳ البوت يشتغل… انتظر لحظات</p>`;
+        }
+      }catch(e){
+        key='err';
+        html = `<p class="err">⚠️ ما قدرت أوصل للبوت.<br>تأكد إن السيرفر شغّال وحدّث الصفحة.</p>`;
+      }
+      if(key!==lastKey){ box.innerHTML = html; lastKey = key; }
+    }
+
+    async function relink(){
+      if(!confirm('بيفصل الرقم الحالي ويطلع باركود جديد. متأكد؟')) return;
+      box.innerHTML = '<div class="spin"></div><p class="wait">جاري التحضير لرقم جديد…</p>'; lastKey='';
+      try{ await fetch(BOT+'/relink',{method:'POST'}); }catch{}
+      setTimeout(()=>{ lastKey=''; tick(); }, 8000);
+    }
+
+    tick();
+    setInterval(tick, 3000);
+  </script>
+</body>
+</html>

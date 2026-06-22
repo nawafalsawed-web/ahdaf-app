@@ -4,6 +4,7 @@
    ⚠️ يستخدم مكتبة غير رسمية — على مسؤوليتك (قد يُحظر الرقم).
 =================================================================== */
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const qrcode = require('qrcode-terminal');
@@ -157,6 +158,17 @@ app.post('/send-message', async (req, res) => {
     }
     res.json({ ok: true });
   } catch (e) { console.error('فشل الإرسال:', e.message); res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// فصل الرقم الحالي وإظهار باركود جديد (لربط رقم ثاني)
+app.post('/relink', (req, res) => {
+  res.json({ ok: true });
+  console.log('↻ طلب ربط رقم ثاني — مسح الجلسة وإعادة التشغيل…');
+  setTimeout(async () => {
+    try { await client.logout().catch(() => {}); } catch {}
+    try { fs.rmSync(path.join(__dirname, '.wwebjs_auth'), { recursive: true, force: true }); } catch {}
+    process.exit(0);   // systemd يعيد التشغيل → جلسة نظيفة → باركود جديد
+  }, 600);
 });
 
 app.listen(PORT, () => console.log(`🌐 خادم البوت يعمل على http://localhost:${PORT}`));
