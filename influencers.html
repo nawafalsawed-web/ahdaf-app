@@ -286,14 +286,10 @@
           <th class="noSort">★</th>
           <th data-s="name" onclick="sortCol('name')">المؤثر</th>
           <th data-s="platform" onclick="sortCol('platform')">المنصة</th>
-          <th class="noSort">يوزر الحساب</th>
-          <th class="noSort">المدينة</th>
           <th class="noSort">المحتوى</th>
           <th class="noSort">الفئة</th>
-          <th class="noSort">داخلي منزلي</th>
-          <th data-s="online" onclick="sortCol('online')">بيع منزلي</th>
-          <th class="noSort">داخلي حضوري</th>
-          <th data-s="visit" onclick="sortCol('visit')">بيع حضوري</th>
+          <th data-s="online" onclick="sortCol('online')">السعر المنزلي</th>
+          <th data-s="visit" onclick="sortCol('visit')">السعر الحضوري</th>
           <th class="noSort">تحديث</th>
           <th class="noSort">إجراءات</th>
         </tr></thead><tbody id="tbody"></tbody></table></div>
@@ -432,6 +428,10 @@
     font-size:11.5px;font-weight:500;text-decoration:none;padding:4px 0}
   .app-tab.on{color:var(--accent)}
   .toast{inset-inline-start:auto!important;right:50%}
+  .pcell{display:flex;flex-direction:column;line-height:1.35}
+  .pcost{font-size:10.5px;color:var(--faint);margin-top:1px;font-weight:400}
+  tbody td{vertical-align:middle}
+  table{min-width:760px}
 </style>
 
 <script>
@@ -609,23 +609,19 @@ function renderLib(){
   });
   rows.sort((a,b)=>{let va,vb;if(sortKey==='name')return a.name.localeCompare(b.name,'ar')*sortDir;if(sortKey==='platform')return String(a.platform).localeCompare(String(b.platform),'ar')*sortDir;if(sortKey==='followers'){va=a.followersNum;vb=b.followersNum}else if(sortKey==='online'){va=a.online;vb=b.online}else{va=a.visit;vb=b.visit}if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return(va-vb)*sortDir});
   const tb=document.getElementById('tbody');
-  if(!DATA.length){tb.innerHTML=`<tr><td colspan="13"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><h3>القاعدة فاضية — استورد قائمتك للبدء</h3><p>صدّر شيت Google كـ Excel ثم اسحبه هنا. تُنظّف الأسعار وتُدمج المكرر تلقائياً.</p><button class="btn primary" onclick="document.getElementById('importFile').click()">استيراد Excel</button></div></td></tr>`}
-  else if(!rows.length){tb.innerHTML='<tr><td colspan="13"><div class="empty-state"><h3>لا نتائج مطابقة</h3></div></td></tr>'}
+  if(!DATA.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><h3>القاعدة فاضية — استورد قائمتك للبدء</h3><p>صدّر شيت Google كـ Excel ثم اسحبه هنا. تُنظّف الأسعار وتُدمج المكرر تلقائياً.</p><button class="btn primary" onclick="document.getElementById('importFile').click()">استيراد Excel</button></div></td></tr>`}
+  else if(!rows.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><h3>لا نتائج مطابقة</h3></div></td></tr>'}
   else tb.innerHTML=rows.map(r=>{
     const hasPhone=!!normalizePhone(r.phone),cc=campCount(r.id);
     const sec=r.platform2?`<span class="badge b-mini ${platformClass(normPlatform(r.platform2))}">${esc(r.platform2)}</span>`:'';
     return `<tr>
       <td><button class="star ${r.favorite?'on':''}" onclick="toggleFav('${r.id}')"><svg viewBox="0 0 24 24" fill="${r.favorite?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6.5 7 .9-5 4.8 1.3 7L12 18l-6.6 3.2 1.3-7-5-4.8 7-.9z"/></svg></button></td>
-      <td><div class="iname">${esc(r.name)}</div><div class="isub">${r.gender?esc(r.gender):''}${sec?' · '+sec:''}${cc?` · <span class="campcount">${cc} حملات</span>`:''}</div>${r.notes?`<div class="inotes">${esc(r.notes)}</div>`:''}</td>
+      <td><div class="iname">${esc(r.name)}</div><div class="isub">${[r.username?esc(r.username):'',r.city?esc(r.city):'',r.gender?esc(r.gender):''].filter(Boolean).join(' · ')}${sec?(([r.username,r.city,r.gender].some(Boolean)?' · ':'')+sec):''}${cc?` · <span class="campcount">${cc} حملات</span>`:''}</div>${r.notes?`<div class="inotes">${esc(r.notes)}</div>`:''}</td>
       <td><span class="badge ${platformClass(r.platform)}">${esc(r.platform||'—')}</span></td>
-      <td>${r.username?esc(r.username):'<span class="cat-empty">—</span>'}</td>
-      <td>${r.city?esc(r.city):'<span class="cat-empty">—</span>'}</td>
       <td>${r.category?`<span class="cat-tag" title="${esc(r.category)}">${esc(r.category)}</span>`:'<span class="cat-empty">—</span>'}</td>
       <td>${r.tier?`<span class="tier-tag ${tierClass(r.tier)}">${esc(r.tier)}</span>`:'<span class="cat-empty">—</span>'}</td>
-      <td><span class="price num ${r.costHome==null?'empty':''}">${fmt(r.costHome)}</span></td>
-      <td><span class="price num ${r.online==null?'empty':''}">${fmt(r.online)}</span></td>
-      <td><span class="price num ${r.costVisit==null?'empty':''}">${fmt(r.costVisit)}</span></td>
-      <td><span class="price num ${r.visit==null?'empty':''}">${fmt(r.visit)}</span></td>
+      <td><div class="pcell"><span class="price num ${r.online==null?'empty':''}">${fmt(r.online)}</span>${r.costHome!=null?`<span class="pcost num">داخلي ${fmt(r.costHome)}</span>`:''}</div></td>
+      <td><div class="pcell"><span class="price num ${r.visit==null?'empty':''}">${fmt(r.visit)}</span>${r.costVisit!=null?`<span class="pcost num">داخلي ${fmt(r.costVisit)}</span>`:''}</div></td>
       <td><span class="num" style="font-size:11px;color:var(--faint)">${r.updated?esc(r.updated):'—'}</span></td>
       <td><div class="rowact">
         <button class="icon-btn waic ${hasPhone?'':'dis'}" ${hasPhone?`onclick="quickWa('${r.id}')"`:''} title="واتساب"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.82 11.82 0 018.413 3.488 11.82 11.82 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zM6.597 20.13c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.107zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.71.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg></button>
