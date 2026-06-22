@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#4C0192">
 <title>ربط واتساب أهداف</title>
+<script>
+(function(){
+  if(/^(localhost|127\.|192\.168\.|10\.|0\.0\.0\.0)/.test(location.hostname)) return;
+  document.documentElement.style.visibility='hidden';
+  fetch(location.origin+'/bot/auth/me',{credentials:'same-origin'})
+    .then(function(r){ if(r.status===401){ location.replace('login.html'); } else { document.documentElement.style.visibility=''; } })
+    .catch(function(){ document.documentElement.style.visibility=''; });
+})();
+</script>
 <style>
   @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
   @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Bold.ttf") format("truetype");font-weight:700;font-display:swap}

@@ -419,6 +419,59 @@ function openClientForm(editId){
   });
 }
 
+/* ---------- المستخدم والدخول ---------- */
+let APP_USER = null;
+async function loadMe(){
+  try{ const r = await fetch(bot.url()+'/auth/me', {credentials:'same-origin'}); if(r.ok){ APP_USER = (await r.json()).user; } }catch{}
+}
+async function logout(){
+  try{ await fetch(bot.url()+'/auth/logout', {method:'POST', credentials:'same-origin'}); }catch{}
+  location.replace('login.html');
+}
+async function openTeam(){
+  sheet.open(`
+    <h2>إدارة الفريق</h2>
+    <p class="sub">مين يقدر يدخل التطبيق (بالبريد + رقم الجوال).</p>
+    <div id="teamList"><div class="link-wait" style="padding:16px;text-align:center;color:var(--muted)">جاري التحميل…</div></div>
+    <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px">
+      <div class="field"><label>الاسم</label><input id="tm_name" placeholder="اسم العضو" autocomplete="off"></div>
+      <div class="field"><label>البريد الإلكتروني</label><input id="tm_email" placeholder="you@ahdaf.co" dir="ltr" style="text-align:left" autocomplete="off"></div>
+      <div class="field"><label>رقم الجوال (بصيغة دولية)</label><input id="tm_phone" placeholder="9665XXXXXXXX" dir="ltr" style="text-align:left" inputmode="numeric"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:14px"><input type="checkbox" id="tm_admin" style="width:auto"> مشرف (يقدر يدير الفريق)</label>
+      <button class="btn-primary" id="tm_add">إضافة عضو</button>
+    </div>
+    <button class="btn-ghost" onclick="openSettings()">رجوع</button>
+  `);
+  async function refresh(){
+    try{
+      const r = await fetch(bot.url()+'/auth/team', {credentials:'same-origin'});
+      const d = await r.json();
+      const list = (d.team||[]);
+      $('#teamList').innerHTML = list.map(u=>`
+        <div class="file-row" style="cursor:default">
+          <span class="file-ic">${u.admin?'⭐':'👤'}</span>
+          <div class="file-info"><div class="file-name">${esc(u.name||u.email)}</div>
+            <div class="file-meta">${esc(u.email)} · ${esc(u.phone)}</div></div>
+          ${APP_USER && esc(u.email)!==esc(APP_USER.email) ? `<button class="file-del" onclick="rmMember('${esc(u.email)}')">حذف</button>` : ''}
+        </div>`).join('') || '<div class="arch-empty">لا أعضاء</div>';
+    }catch{ $('#teamList').innerHTML = '<div class="link-off" style="color:#c0392b;padding:12px">تعذّر تحميل الفريق</div>'; }
+  }
+  window.rmMember = async (email)=>{
+    if(!confirm('حذف هذا العضو؟')) return;
+    await fetch(bot.url()+'/auth/team/remove',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({email})});
+    toast('تم الحذف'); refresh();
+  };
+  $('#tm_add').addEventListener('click', async ()=>{
+    const name=$('#tm_name').value.trim(), email=$('#tm_email').value.trim(), phone=$('#tm_phone').value.replace(/\D/g,''), admin=$('#tm_admin').checked;
+    if(!email||!phone){ toast('عبّي البريد ورقم الجوال'); return; }
+    const r = await fetch(bot.url()+'/auth/team/add',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({name,email,phone,admin})});
+    const d = await r.json();
+    if(d.ok){ toast(d.updated?'تم تحديث الرقم':'أُضيف العضو ✓'); $('#tm_name').value='';$('#tm_email').value='';$('#tm_phone').value='';$('#tm_admin').checked=false; refresh(); }
+    else{ toast(d.error||'تعذّرت الإضافة'); }
+  });
+  refresh();
+}
+
 /* ---------- إعدادات البوت ---------- */
 function openSettings(){
   const s = store.settings;
@@ -443,6 +496,12 @@ function openSettings(){
     </div>
 
     <button class="btn-primary" id="s_save">حفظ الإعدادات</button>
+
+    <div style="border-top:1px solid var(--line);margin-top:20px;padding-top:16px">
+      ${APP_USER?`<p class="sub" style="margin-bottom:12px">مسجّل: <b>${esc(APP_USER.email)}</b>${APP_USER.admin?' · مشرف':''}</p>`:''}
+      ${APP_USER&&APP_USER.admin?`<button class="btn-soft" style="width:100%;margin-bottom:8px;padding:12px" onclick="openTeam()">👥 إدارة الفريق والدخول</button>`:''}
+      <button class="btn-danger" onclick="logout()">تسجيل الخروج</button>
+    </div>
     <button class="btn-ghost" onclick="sheet.close()">إغلاق</button>
   `);
 
@@ -1234,6 +1293,9 @@ window.openTaskForm=openTaskForm; window.taskMenu=taskMenu; window.toggleTask=to
 window.openProposalForm=openProposalForm; window.proposalMenu=proposalMenu; window.moveProposal=moveProposal;
 window.openPropNotify=openPropNotify; window.showArchive=showArchive; window.propsHome=propsHome;
 window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFile; window.openStoredFile=openStoredFile;
+window.logout=logout; window.openTeam=openTeam;
+
+loadMe();   // جلب بيانات المستخدم المسجّل
 
 // افتح التبويب المطلوب عند الرجوع من قسم المؤثرين (index.html?tab=...)
 (function(){

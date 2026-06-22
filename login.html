@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#4C0192">
+<title>دخول · أهداف</title>
+<style>
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Medium.ttf") format("truetype");font-weight:500;font-display:swap}
+  @font-face{font-family:"Saudi Serif";src:url("assets/fonts/SaudiSerif-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{--purple:#4C0192;--bg:#f6f5f8;--ink:#1d1d22;--muted:#7a7a85;--line:#e3e1e8}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Saudi Serif",-apple-system,"SF Arabic","Segoe UI",Tahoma,sans-serif;
+    background:linear-gradient(160deg,#4C0192,#2c0157);color:var(--ink);min-height:100vh;
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#fff;border-radius:24px;max-width:400px;width:100%;padding:34px 28px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .brand{text-align:center;font-size:30px;font-weight:700;color:var(--purple);margin-bottom:4px}
+  .tag{text-align:center;color:var(--muted);font-size:13.5px;margin-bottom:26px}
+  label{display:block;font-size:13.5px;font-weight:500;color:var(--ink);margin-bottom:7px}
+  input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;font-size:16px;
+    font-family:inherit;background:#fafafb;color:var(--ink);margin-bottom:16px}
+  input:focus{outline:none;border-color:var(--purple);background:#fff}
+  .phone-row{display:flex;gap:8px;direction:ltr}
+  .phone-row select{flex:none;width:96px;border:1.5px solid var(--line);border-radius:12px;background:#fafafb;font-family:inherit;font-size:15px;padding:0 8px}
+  .phone-row input{flex:1;text-align:left;margin-bottom:0}
+  .phone-wrap{margin-bottom:18px}
+  button{width:100%;background:var(--purple);color:#fff;border:none;border-radius:13px;padding:15px;
+    font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .15s}
+  button:active{opacity:.85}button:disabled{opacity:.5}
+  .err{background:#fdecea;color:#c0392b;font-size:13.5px;padding:10px 14px;border-radius:10px;margin-bottom:16px;text-align:center;display:none}
+  .note{text-align:center;color:var(--muted);font-size:12px;margin-top:18px;line-height:1.7}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">أهداف</div>
+    <div class="tag">تسجيل دخول الفريق</div>
+    <div class="err" id="err"></div>
+    <label>البريد الإلكتروني</label>
+    <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@ahdaf.co" dir="ltr" style="text-align:left">
+    <label>رقم الجوال</label>
+    <div class="phone-wrap"><div class="phone-row">
+      <select id="dial"><option>+966</option><option>+971</option><option>+973</option><option>+974</option><option>+965</option><option>+968</option><option>+20</option></select>
+      <input id="phone" type="tel" inputmode="numeric" placeholder="5XXXXXXXX">
+    </div></div>
+    <button id="btn">دخول</button>
+    <p class="note">الدخول مخصّص لفريق أهداف فقط.<br>لو ما عندك حساب، كلّم المشرف.</p>
+  </div>
+  <script>
+    const BOT = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname)
+      ? 'http://localhost:3000' : location.origin + '/bot';
+    const $ = id => document.getElementById(id);
+    const showErr = m => { const e=$('err'); e.textContent=m; e.style.display='block'; };
+
+    // لو مسجّل دخول أصلاً → التطبيق
+    (async()=>{ try{ const r=await fetch(BOT+'/auth/me',{credentials:'same-origin'}); if(r.ok) location.replace('index.html'); }catch{} })();
+
+    async function login(){
+      const email=$('email').value.trim();
+      const phone=$('dial').value.replace(/\D/g,'') + $('phone').value.replace(/\D/g,'').replace(/^0+/,'');
+      if(!email || !$('phone').value.trim()){ showErr('عبّي البريد ورقم الجوال'); return; }
+      $('btn').disabled=true; $('btn').textContent='جاري الدخول…';
+      try{
+        const r=await fetch(BOT+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({email,phone})});
+        const d=await r.json();
+        if(r.ok && d.ok){ location.replace('index.html'); }
+        else{ showErr(d.error||'تعذّر الدخول'); $('btn').disabled=false; $('btn').textContent='دخول'; }
+      }catch(e){ showErr('ما قدرت أوصل للسيرفر'); $('btn').disabled=false; $('btn').textContent='دخول'; }
+    }
+    $('btn').addEventListener('click', login);
+    $('phone').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
+  </script>
+</body>
+</html>

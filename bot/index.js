@@ -42,13 +42,67 @@ client.initialize();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '45mb' }));
 
-// حالة البوت
-app.get('/status', (req, res) => res.json({ ready, hasQr: !!lastQr, qrV, version: VERSION }));
+// ===================== المصادقة (تسجيل الدخول) =====================
+const crypto = require('crypto');
+const TEAM_FILE = path.join(__dirname, 'team.json');
+const SECRET_FILE = path.join(__dirname, '.auth_secret');
+let AUTH_SECRET;
+try { AUTH_SECRET = fs.readFileSync(SECRET_FILE, 'utf8'); }
+catch { AUTH_SECRET = crypto.randomBytes(32).toString('hex'); try { fs.writeFileSync(SECRET_FILE, AUTH_SECRET); } catch {} }
+const normEmail = e => String(e || '').trim().toLowerCase();
+const normPhone = p => String(p || '').replace(/\D/g, '').replace(/^0+/, '');
+const loadTeam = () => { try { return JSON.parse(fs.readFileSync(TEAM_FILE, 'utf8')); } catch { return []; } };
+const saveTeam = t => fs.writeFileSync(TEAM_FILE, JSON.stringify(t, null, 2));
+function makeToken(email) {
+  const p = Buffer.from(JSON.stringify({ e: email, exp: Date.now() + 30 * 86400000 })).toString('base64url');
+  return p + '.' + crypto.createHmac('sha256', AUTH_SECRET).update(p).digest('base64url');
+}
+function tokenEmail(tok) {
+  if (!tok || !tok.includes('.')) return null;
+  const [p, sig] = tok.split('.');
+  if (crypto.createHmac('sha256', AUTH_SECRET).update(p).digest('base64url') !== sig) return null;
+  try { const d = JSON.parse(Buffer.from(p, 'base64url').toString()); return d.exp > Date.now() ? d.e : null; } catch { return null; }
+}
+function reqUser(req) {
+  const m = (req.headers.cookie || '').match(/(?:^|; )ahdaf_session=([^;]+)/);
+  const email = m ? tokenEmail(decodeURIComponent(m[1])) : null;
+  if (!email) return null;
+  return loadTeam().find(u => normEmail(u.email) === email) || null;
+}
+function requireAuth(req, res, next) { const u = reqUser(req); if (!u) return res.status(401).json({ ok: false, error: 'سجّل الدخول أول' }); req.user = u; next(); }
+
+app.post('/auth/login', (req, res) => {
+  const email = normEmail(req.body && req.body.email), phone = normPhone(req.body && req.body.phone);
+  const u = loadTeam().find(x => normEmail(x.email) === email && normPhone(x.phone) === phone);
+  if (!u) return res.status(401).json({ ok: false, error: 'البريد أو رقم الجوال غير صحيح' });
+  res.setHeader('Set-Cookie', `ahdaf_session=${makeToken(email)}; Path=/; Max-Age=${30 * 86400}; HttpOnly; Secure; SameSite=Lax`);
+  res.json({ ok: true, user: { email: u.email, name: u.name || '', admin: !!u.admin } });
+});
+app.get('/auth/me', (req, res) => { const u = reqUser(req); if (!u) return res.status(401).json({ ok: false }); res.json({ ok: true, user: { email: u.email, name: u.name || '', admin: !!u.admin } }); });
+app.post('/auth/logout', (req, res) => { res.setHeader('Set-Cookie', 'ahdaf_session=; Path=/; Max-Age=0'); res.json({ ok: true }); });
+app.get('/auth/team', requireAuth, (req, res) => { if (!req.user.admin) return res.status(403).json({ ok: false }); res.json({ ok: true, team: loadTeam().map(u => ({ email: u.email, phone: u.phone, name: u.name || '', admin: !!u.admin })) }); });
+app.post('/auth/team/add', requireAuth, (req, res) => {
+  if (!req.user.admin) return res.status(403).json({ ok: false, error: 'للمشرف فقط' });
+  const email = normEmail(req.body && req.body.email), phone = normPhone(req.body && req.body.phone), name = (req.body && req.body.name) || '', admin = !!(req.body && req.body.admin);
+  if (!email || !phone) return res.status(400).json({ ok: false, error: 'البريد والجوال مطلوبين' });
+  const team = loadTeam();
+  if (team.find(x => normEmail(x.email) === email)) { team.find(x => normEmail(x.email) === email).phone = phone; saveTeam(team); return res.json({ ok: true, updated: true }); }
+  team.push({ email, phone, name, admin }); saveTeam(team); res.json({ ok: true });
+});
+app.post('/auth/team/remove', requireAuth, (req, res) => {
+  if (!req.user.admin) return res.status(403).json({ ok: false });
+  const email = normEmail(req.body && req.body.email);
+  if (email === normEmail(req.user.email)) return res.status(400).json({ ok: false, error: 'ما تقدر تحذف نفسك' });
+  saveTeam(loadTeam().filter(x => normEmail(x.email) !== email)); res.json({ ok: true });
+});
+
+// حالة البوت (محمي)
+app.get('/status', requireAuth, (req, res) => res.json({ ready, hasQr: !!lastQr, qrV, version: VERSION }));
 
 // الباركود كصورة PNG — يعرضه الموقع
-app.get('/qr', async (req, res) => {
+app.get('/qr', requireAuth, async (req, res) => {
   if (ready) return res.status(204).end();              // مربوط — لا حاجة لباركود
   if (!lastQr) return res.status(404).json({ error: 'لا يوجد باركود بعد' });
   try {
@@ -58,7 +112,7 @@ app.get('/qr', async (req, res) => {
 });
 
 // إنشاء قروب
-app.post('/create-group', async (req, res) => {
+app.post('/create-group', requireAuth, async (req, res) => {
   try {
     if (!ready) return res.status(503).json({ ok: false, error: 'البوت مو جاهز — امسح الـQR أول' });
 
@@ -132,7 +186,7 @@ app.post('/create-group', async (req, res) => {
 });
 
 // قائمة القروبات (لاختيار قروب الطلبات/التعديلات/المعتمد)
-app.get('/groups', async (req, res) => {
+app.get('/groups', requireAuth, async (req, res) => {
   if (!ready) return res.status(503).json({ ok: false, error: 'البوت مو جاهز' });
   try {
     const chats = await client.getChats();
@@ -142,7 +196,7 @@ app.get('/groups', async (req, res) => {
 });
 
 // إرسال رسالة لقروب/جهة
-app.post('/send-message', async (req, res) => {
+app.post('/send-message', requireAuth, async (req, res) => {
   try {
     if (!ready) return res.status(503).json({ ok: false, error: 'البوت مو جاهز' });
     const { chatId, text, media } = req.body || {};
@@ -161,7 +215,7 @@ app.post('/send-message', async (req, res) => {
 });
 
 // فصل الرقم الحالي وإظهار باركود جديد (لربط رقم ثاني)
-app.post('/relink', (req, res) => {
+app.post('/relink', requireAuth, (req, res) => {
   res.json({ ok: true });
   console.log('↻ طلب ربط رقم ثاني — مسح الجلسة وإعادة التشغيل…');
   setTimeout(async () => {

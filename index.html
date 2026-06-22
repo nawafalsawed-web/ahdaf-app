@@ -10,6 +10,16 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="manifest" href="manifest.json">
 <title>أهداف · إدارة العمل</title>
+<script>
+/* حارس الدخول: على الموقع المنشور، لو مو مسجّل → صفحة الدخول */
+(function(){
+  if(/^(localhost|127\.|192\.168\.|10\.|0\.0\.0\.0)/.test(location.hostname)) return;
+  document.documentElement.style.visibility='hidden';
+  fetch(location.origin+'/bot/auth/me',{credentials:'same-origin'})
+    .then(function(r){ if(r.status===401){ location.replace('login.html'); } else { document.documentElement.style.visibility=''; } })
+    .catch(function(){ document.documentElement.style.visibility=''; });
+})();
+</script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>

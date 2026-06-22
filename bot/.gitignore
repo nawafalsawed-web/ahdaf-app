@@ -1,6 +1,8 @@
 node_modules/
 .wwebjs_auth/
 .wwebjs_cache/
+team.json
+.auth_secret
 projecto.config.json
 projecto-data.json
 projecto-shots/
