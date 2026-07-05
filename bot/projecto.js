@@ -28,7 +28,7 @@ function parseCurl(text) {
   };
 }
 
-function apiGet(pathname, cfg, containerId) {
+function apiReq(pathname, cfg, { containerId, method = 'GET', body } = {}) {
   return new Promise((resolve, reject) => {
     const headers = {
       autkey: cfg.autkey, privatekey: cfg.privatekey,
@@ -40,7 +40,8 @@ function apiGet(pathname, cfg, containerId) {
       accept: 'text/html, */*; q=0.01',
     };
     if (containerId != null) headers.containerid = String(containerId);
-    const req = https.request({ host: API, path: pathname, method: 'GET', headers }, res => {
+    if (method === 'POST') { headers['content-type'] = 'application/x-www-form-urlencoded;charset=UTF-8'; headers['content-length'] = Buffer.byteLength(body || ''); }
+    const req = https.request({ host: API, path: pathname, method, headers }, res => {
       let buf = '';
       res.on('data', d => buf += d);
       res.on('end', () => {
@@ -51,9 +52,11 @@ function apiGet(pathname, cfg, containerId) {
     });
     req.on('error', reject);
     req.setTimeout(30000, () => req.destroy(new Error('انتهت مهلة الاتصال')));
+    if (method === 'POST') req.write(body || '');
     req.end();
   });
 }
+const apiGet = (pathname, cfg, containerId) => apiReq(pathname, cfg, { containerId });
 
 const stripHtml = s => String(s || '')
   .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n')
@@ -70,6 +73,13 @@ async function syncProjecto() {
   syncing = true;
   const t0 = Date.now();
   try {
+    // أعضاء الفريق (لتمييز اللوحات-الأشخاص عن أعمدة المراحل)
+    let members = [];
+    try {
+      const mem = await apiReq('/api/Users/LoadActiveUsersByTeam', cfg, { method: 'POST', body: `Id=0&TeamId=${cfg.teamid}` });
+      members = (mem || []).map(u => ({ id: u.Id, name: (u.UserName || '').trim() })).filter(u => u.name);
+    } catch { /* غير حرج */ }
+
     const tree = await apiGet('/api/Hierarchy/GetUserTree?currentTicks=0', cfg);
     const conts = (tree.ContainerHierarchy || []).filter(c => c.Dv === 'board' || c.Dv === 'list');
     const projects = [];
@@ -105,7 +115,7 @@ async function syncProjecto() {
       projects: projects.filter(p => p.total > 0).length,
       tasks: projects.reduce((s, p) => s + p.boards.reduce((a, b) => a + b.tasks.length, 0), 0),
     };
-    const data = { projects, lastSync: Date.now(), error: null, stats, took: Date.now() - t0 };
+    const data = { projects, members, lastSync: Date.now(), error: null, stats, took: Date.now() - t0 };
     fs.writeFileSync(DATA, JSON.stringify(data));
     console.log(`🔄 مزامنة بروجيكتو: ${stats.projects} مشروع، ${stats.tasks} مهمة (${((Date.now() - t0) / 1000).toFixed(0)}ث)`);
     return stats;

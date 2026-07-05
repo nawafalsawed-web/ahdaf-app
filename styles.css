@@ -377,3 +377,23 @@ main{padding:18px 16px calc(120px + var(--safe-bot));max-width:680px;margin:0 au
 .pj-detail-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
 .pj-detail-meta>div{background:#f7f6f9;border-radius:10px;padding:8px 13px;font-size:14px;font-weight:600;color:var(--ink)}
 .pj-detail-meta>div span{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-bottom:2px}
+
+/* بحث + تبويبات + أشخاص + سياق */
+.pj-searchbar{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:0 14px;margin-bottom:12px;box-shadow:var(--shadow);color:var(--muted)}
+.pj-searchbar input{flex:1;border:0;background:transparent;font-family:inherit;font-size:15px;color:var(--ink);padding:12px 0;outline:none}
+.pj-searchbar input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;width:16px;height:16px;background:var(--muted);border-radius:50%;-webkit-mask:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 6L6 18M6 6l12 12' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center/12px no-repeat;mask:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 6L6 18M6 6l12 12' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center/12px no-repeat}
+.pj-segs{display:flex;gap:6px;background:#eeecf1;border-radius:12px;padding:4px;margin-bottom:18px}
+.pj-seg{flex:1;border-radius:9px;padding:9px 6px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--muted);background:transparent;transition:all .15s}
+.pj-seg.on{background:#fff;color:var(--purple);box-shadow:0 1px 5px rgba(40,10,80,.1)}
+.pj-seg:active{opacity:.7}
+
+.pj-people{display:flex;flex-direction:column;gap:9px}
+.pj-person{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:12px 14px;font-family:inherit;text-align:right;animation:rise .3s ease both}
+.pj-person:active{transform:scale(.98)}
+.pj-ava{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px}
+.pj-person-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pj-person-name{font-weight:700;font-size:15.5px;color:var(--ink)}
+.pj-person-sub{font-size:12.5px;color:var(--muted)}
+.pj-person-badge{flex:none;min-width:26px;height:26px;padding:0 8px;border-radius:20px;background:var(--purple-soft);color:var(--purple);font-weight:700;font-size:13px;display:grid;place-items:center}
+
+.task-meta .pj-ctx{font-size:11.5px;color:var(--charcoal);background:#f0eff3;padding:2px 9px;border-radius:20px;font-weight:600}
