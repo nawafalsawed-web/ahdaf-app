@@ -1090,7 +1090,7 @@ function pjHeader(){
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input id="pjSearch" type="search" placeholder="ابحث في كل المهام…" value="${esc(PJ_SEARCH)}" autocomplete="off">
     </div>
-    <div class="pj-segs">${seg('sections','الأقسام')}${seg('people','الأشخاص')}${seg('overdue','المتأخرة')}</div>`;
+    <div class="pj-segs">${seg('sections','الأقسام')}${seg('people','الأشخاص')}</div>`;
 }
 
 function paintHub(){
