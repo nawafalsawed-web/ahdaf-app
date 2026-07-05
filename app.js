@@ -985,54 +985,213 @@ function formatDue(due){
   return { text, cls };
 }
 
-function renderTasks(){
+/* ---------- قسم المهام = مرآة Projecto (مزامنة تلقائية من السيرفر) ---------- */
+let PJ_DATA = null;          // آخر بيانات محمّلة
+let PJ_PROJECT = null;       // معرّف المشروع المفتوح حالياً (تفاصيل)
+
+function timeAgo(ts){
+  if(!ts) return 'ما تمت بعد';
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return 'الآن';
+  if(s<3600) return `قبل ${Math.floor(s/60)} د`;
+  if(s<86400) return `قبل ${Math.floor(s/3600)} س`;
+  return `قبل ${Math.floor(s/86400)} يوم`;
+}
+
+async function renderTasks(){
   const view = $('#view');
-  const all = store.tasks;
-  const active = all.filter(t=>!t.done).sort((a,b)=>{
-    const pr = (PRIO_RANK[a.priority]??2) - (PRIO_RANK[b.priority]??2);
-    if(pr) return pr;
-    if(a.due && b.due) return a.due.localeCompare(b.due);
-    if(a.due) return -1; if(b.due) return 1; return 0;
-  });
-  const done = all.filter(t=>t.done);
+  if(!PJ_DATA){
+    view.innerHTML = `<div class="section-head"><h1>المهام</h1></div>
+      <div class="pj-loading"><span class="spin"></span> جاري تحميل مشاريع Projecto…</div>`;
+  }
+  try{
+    const r = await fetch(bot.url()+'/projecto', {credentials:'same-origin'});
+    PJ_DATA = await r.json();
+  }catch{ /* نبقي على آخر بيانات */ }
+  if(PJ_PROJECT){ return renderProjectoProject(PJ_PROJECT); }
+  paintProjectoHome();
+}
 
-  const projectoBar = `
-    <button class="projecto-bar" onclick="openProjecto()">
-      <span class="pj-left"><span class="pj-dot"></span> Projecto</span>
-      <span class="pj-right">استيراد ›</span>
-    </button>`;
+function paintProjectoHome(){
+  const view = $('#view');
+  const d = PJ_DATA || {};
 
-  if(all.length === 0){
-    view.innerHTML = projectoBar + `
+  // غير مربوط
+  if(!d.connected){
+    view.innerHTML = `
+      <div class="section-head"><h1>المهام</h1></div>
       <div class="empty">
-        <span class="emoji">✅</span>
-        <h3>لا توجد مهام</h3>
-        <p>أضف مهمة، واربطها بعميل،<br>وحدّد الأولوية وتاريخ التسليم.</p>
-        <button class="cta" onclick="openTaskForm()">+ إضافة أول مهمة</button>
+        <span class="emoji">🔗</span>
+        <h3>بروجيكتو غير مربوط</h3>
+        <p>${APP_USER && APP_USER.admin
+            ? 'اربط حساب Projecto مرّة وحدة، وبعدها تتحدّث المهام تلقائياً كل ٣ ساعات.'
+            : 'اطلب من المشرف ربط حساب Projecto.'}</p>
+        ${APP_USER && APP_USER.admin ? `<button class="cta" onclick="openProjectoConnect()">ربط بروجيكتو</button>` : ''}
       </div>`;
     return;
   }
 
-  let html = projectoBar + `
-    <div class="section-head">
-      <h1>المهام</h1>
-      <span class="count">${active.length} نشطة · ${done.length} منجزة</span>
+  const projects = (d.projects||[]).filter(p=>p.total>0)
+    .sort((a,b)=> (b.total-b.done)-(a.total-a.done) || b.total-a.total);
+  const stats = d.stats || {projects:0,tasks:0};
+
+  const errBanner = d.error ? `
+    <div class="pj-error">
+      ⚠️ ${esc(d.error)}${APP_USER&&APP_USER.admin?` — <a onclick="openProjectoConnect()">حدّث الربط</a>`:''}
+    </div>` : '';
+
+  const syncbar = `
+    <div class="pj-syncbar">
+      <span class="pj-sync-info"><span class="pj-dot"></span> Projecto · ${stats.projects} مشروع · ${stats.tasks} مهمة</span>
+      <span class="pj-sync-right">
+        <span class="pj-ago">${timeAgo(d.lastSync)}</span>
+        <button class="pj-refresh" id="pjRefresh" onclick="syncProjectoNow()" aria-label="تحديث">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+      </span>
     </div>`;
 
-  if(active.length){
-    active.forEach(t=>{ html += taskCard(t); });
-  }else{
-    html += `<div class="all-done">🎉 خلّصت كل مهامك النشطة!</div>`;
-  }
-
-  if(done.length){
-    html += `<div class="group-label" style="margin-top:24px">
-        <span class="gname">منجزة</span><span class="gcount">${done.length}</span><span class="gline"></span>
-      </div>`;
-    done.forEach(t=>{ html += taskCard(t); });
-  }
-
+  let html = syncbar + errBanner + `<div class="section-head"><h1>المهام</h1></div>`;
+  html += `<div class="pj-grid">`;
+  projects.forEach(p=>{
+    const pct = p.total ? Math.round(100*p.done/p.total) : 0;
+    html += `
+      <button class="pj-card" style="--pc:${esc(p.color)}" onclick="openProjectoProject(${p.id})">
+        <div class="pj-card-top">
+          <span class="pj-name">${esc(p.name)}</span>
+          <span class="pj-pct">${pct}%</span>
+        </div>
+        <div class="pj-progress"><span style="width:${pct}%;background:${esc(p.color)}"></span></div>
+        <div class="pj-sub">${p.done}/${p.total} مهمة · ${p.boards.length} لوحة</div>
+      </button>`;
+  });
+  html += `</div>`;
   view.innerHTML = html;
+}
+
+function openProjectoProject(id){
+  PJ_PROJECT = id;
+  renderProjectoProject(id);
+}
+
+function renderProjectoProject(id){
+  const view = $('#view');
+  const d = PJ_DATA || {};
+  const p = (d.projects||[]).find(x=>x.id===id);
+  if(!p){ PJ_PROJECT=null; return paintProjectoHome(); }
+  const pct = p.total ? Math.round(100*p.done/p.total) : 0;
+
+  let html = `
+    <button class="pj-back" onclick="closeProjectoProject()">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      كل المشاريع
+    </button>
+    <div class="pj-proj-head" style="--pc:${esc(p.color)}">
+      <h1>${esc(p.name)}</h1>
+      <div class="pj-progress big"><span style="width:${pct}%;background:${esc(p.color)}"></span></div>
+      <div class="pj-sub">${p.done}/${p.total} مهمة منجزة · ${pct}%</div>
+    </div>`;
+
+  // اللوحات (الأعمدة) — نخفي الفارغة
+  const boards = (p.boards||[]).filter(b=>b.tasks.length);
+  if(!boards.length){
+    html += `<div class="all-done">ما فيه مهام ظاهرة في هذا المشروع.</div>`;
+  }
+  boards.forEach(b=>{
+    const openT = b.tasks.filter(t=>!t.done);
+    const doneT = b.tasks.filter(t=>t.done);
+    html += `<div class="pj-board">
+      <div class="pj-board-head"><span class="pj-board-name">${esc(b.name||'لوحة')}</span><span class="pj-board-count">${b.tasks.length}</span></div>`;
+    openT.forEach(t=> html += pjTaskCard(t));
+    if(doneT.length){
+      html += `<details class="pj-done-wrap"><summary>${doneT.length} منجزة</summary>`;
+      doneT.forEach(t=> html += pjTaskCard(t));
+      html += `</details>`;
+    }
+    html += `</div>`;
+  });
+  view.innerHTML = html;
+}
+
+function closeProjectoProject(){ PJ_PROJECT=null; paintProjectoHome(); }
+
+const PJ_PRIO = {1:'#c0392b',2:'#d98c1f',3:'#7a7a85',4:'#7a7a85'}; // 1 عاجل … أعلى رقم أقل أهمية
+function pjDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso); if(isNaN(d)) return '';
+  return d.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short'});
+}
+function pjTaskCard(t){
+  const meta = [];
+  if(t.end) meta.push(`<span class="due">${esc(pjDate(t.end))}</span>`);
+  if(t.comments) meta.push(`<span class="pj-cm">💬 ${t.comments}</span>`);
+  if(t.files) meta.push(`<span class="pj-cm">📎 ${t.files}</span>`);
+  return `
+    <div class="task-card pj ${t.done?'done':''}" onclick="pjTaskDetail(${t.id})">
+      <span class="task-check ${t.done?'on':''}">${t.done?'<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16.2l-3.5-3.5-1.4 1.4L9 19 20 8l-1.4-1.4z"/></svg>':''}</span>
+      <div class="task-body">
+        <div class="task-title">${esc(t.title)}</div>
+        ${meta.length?`<div class="task-meta">${meta.join('')}</div>`:''}
+      </div>
+    </div>`;
+}
+function pjTaskDetail(id){
+  const d = PJ_DATA||{}; let task=null, proj=null, board=null;
+  for(const p of (d.projects||[])) for(const b of (p.boards||[])){ const f=b.tasks.find(x=>x.id===id); if(f){task=f;proj=p;board=b;} }
+  if(!task) return;
+  sheet.open(`
+    <h2>${esc(task.title)}</h2>
+    <p class="sub">${esc(proj.name)} · ${esc(board.name||'')}${task.done?' · ✅ منجزة':''}</p>
+    ${task.desc?`<div class="pj-desc">${esc(task.desc).replace(/\n/g,'<br>')}</div>`:'<p class="link-hint small">ما فيه وصف.</p>'}
+    <div class="pj-detail-meta">
+      ${task.start?`<div><span>البداية</span>${esc(pjDate(task.start))}</div>`:''}
+      ${task.end?`<div><span>التسليم</span>${esc(pjDate(task.end))}</div>`:''}
+      ${task.comments?`<div><span>تعليقات</span>${task.comments}</div>`:''}
+      ${task.files?`<div><span>ملفات</span>${task.files}</div>`:''}
+    </div>
+    <button class="btn-ghost" onclick="sheet.close()">إغلاق</button>
+  `);
+}
+
+async function syncProjectoNow(){
+  const btn = $('#pjRefresh'); if(btn) btn.classList.add('spinning');
+  try{
+    const r = await fetch(bot.url()+'/projecto/sync', {method:'POST', credentials:'same-origin'});
+    const j = await r.json();
+    if(j.ok){ toast(`تمّت المزامنة · ${j.stats.tasks} مهمة`); PJ_DATA=null; await renderTasks(); }
+    else toast(j.error||'تعذّرت المزامنة');
+  }catch{ toast('ما قدرت أتصل بالسيرفر'); }
+  finally{ const b=$('#pjRefresh'); if(b) b.classList.remove('spinning'); }
+}
+
+function openProjectoConnect(){
+  sheet.open(`
+    <h2>ربط Projecto</h2>
+    <p class="sub">مرّة وحدة، وبعدها المهام تتحدّث تلقائياً كل ٣ ساعات على السيرفر.</p>
+    <div class="link-box" style="text-align:right;align-items:stretch;gap:8px">
+      <p class="link-hint" style="max-width:none;font-weight:700;color:var(--charcoal)">الطريقة:</p>
+      <ol class="howto">
+        <li>افتح Projecto في المتصفح على الكمبيوتر.</li>
+        <li>افتح أدوات المطوّر (F12) → تبويب <b>Network</b>.</li>
+        <li>كليك يمين على أي طلب اسمه <b>LoadActiveUsersByTeam</b> → Copy → <b>Copy as cURL</b>.</li>
+        <li>الصقه في المربّع تحت.</li>
+      </ol>
+    </div>
+    <div class="field"><textarea id="pj_curl" rows="4" placeholder="الصق أمر cURL هنا…" dir="ltr" style="text-align:left;font-family:monospace;font-size:12px"></textarea></div>
+    <button class="btn-primary" id="pj_connect">ربط ومزامنة</button>
+    <button class="btn-ghost" onclick="sheet.close()">إلغاء</button>
+  `);
+  $('#pj_connect').addEventListener('click', async ()=>{
+    const curl = $('#pj_curl').value.trim();
+    if(curl.length<40){ toast('الصق أمر cURL كامل'); return; }
+    const btn=$('#pj_connect'); btn.disabled=true; btn.textContent='جاري الربط والمزامنة…';
+    try{
+      const r = await fetch(bot.url()+'/projecto/connect', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({curl})});
+      const j = await r.json();
+      if(j.ok){ toast(`تم الربط · ${j.stats.tasks} مهمة`); sheet.close(); PJ_DATA=null; renderTasks(); }
+      else { toast(j.error||'تعذّر الربط'); btn.disabled=false; btn.textContent='ربط ومزامنة'; }
+    }catch{ toast('ما قدرت أتصل بالسيرفر'); btn.disabled=false; btn.textContent='ربط ومزامنة'; }
+  });
 }
 
 function taskCard(t){
@@ -1283,9 +1442,10 @@ function switchTab(tab){
   activeTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
   $('#searchWrap').hidden=true; $('#searchToggle').style.visibility = tab==='clients'?'visible':'hidden';
+  const fab=$('#fab'); if(fab) fab.style.display = tab==='tasks' ? 'none' : '';
   if(tab==='clients') renderClients();
   else if(tab==='proposals'){ propsView='home'; renderProposals(); }
-  else renderTasks();
+  else { PJ_PROJECT=null; renderTasks(); }
 }
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
 

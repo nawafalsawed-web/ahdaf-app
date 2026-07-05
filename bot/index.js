@@ -11,8 +11,10 @@ const qrcode = require('qrcode-terminal');
 const QRImage = require('qrcode');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 
+const projecto = require('./projecto');
+
 const PORT = process.env.PORT || 3000;
-const VERSION = 'v10 — ملفات على السيرفر';
+const VERSION = 'v11 — مزامنة Projecto تلقائية';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 console.log('\n╔══════════════════════════════════════╗');
@@ -278,5 +280,44 @@ app.post('/files/remove', requireAuth, (req, res) => {
   saveFiles(loadFiles().filter(f => f.id !== id));
   res.json({ ok: true });
 });
+
+// ===================== مزامنة Projecto (مشاريع + مهام) =====================
+// GET: بيانات المشاريع والمهام المخزّنة (تُحدَّث تلقائياً في الخلفية)
+app.get('/projecto', requireAuth, (req, res) => {
+  const d = projecto.loadData();
+  res.json({ ok: true, connected: projecto.isConnected(), ...d });
+});
+
+// حالة مختصرة (للشارة أعلى قسم المهام)
+app.get('/projecto/status', requireAuth, (req, res) => {
+  const d = projecto.loadData();
+  res.json({ ok: true, connected: projecto.isConnected(), lastSync: d.lastSync || 0, error: d.error || null, stats: d.stats || { projects: 0, tasks: 0 } });
+});
+
+// مزامنة فورية الآن
+app.post('/projecto/sync', requireAuth, async (req, res) => {
+  if (!projecto.isConnected()) return res.status(400).json({ ok: false, error: 'بروجيكتو غير مربوط' });
+  try { const stats = await projecto.syncProjecto(); res.json({ ok: true, stats }); }
+  catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
+// ربط/تحديث المفاتيح بلصق أمر cURL (للمشرف) ثم مزامنة فورية
+app.post('/projecto/connect', requireAuth, async (req, res) => {
+  if (!req.user.admin) return res.status(403).json({ ok: false, error: 'للمشرف فقط' });
+  const parsed = projecto.parseCurl((req.body && req.body.curl) || '');
+  if (!parsed.autkey || !parsed.privatekey || !parsed.userid || !parsed.teamid) {
+    return res.status(400).json({ ok: false, error: 'ما قدرت أطلع المفاتيح من النص — تأكد إنك نسخت «Copy as cURL» كامل' });
+  }
+  projecto.saveCfg(parsed);
+  try { const stats = await projecto.syncProjecto(); res.json({ ok: true, stats }); }
+  catch (e) { res.status(502).json({ ok: false, error: e.message }); }
+});
+
+// جدولة المزامنة التلقائية: عند الإقلاع + كل 3 ساعات
+if (projecto.isConnected()) {
+  setTimeout(() => projecto.syncProjecto().catch(() => {}), 8000);
+  setInterval(() => projecto.syncProjecto().catch(() => {}), 3 * 60 * 60 * 1000);
+  console.log('🔄 مزامنة Projecto مجدولة كل 3 ساعات');
+}
 
 app.listen(PORT, () => console.log(`🌐 خادم البوت يعمل على http://localhost:${PORT}`));
