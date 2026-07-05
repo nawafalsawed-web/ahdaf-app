@@ -37,11 +37,13 @@ const store = {
 /* ---------- البوت (الأتمتة) ---------- */
 const bot = {
   url(){
-    if(store.settings.botUrl) return store.settings.botUrl.replace(/\/$/,'');
+    const local = /^(localhost|127\.|192\.168\.|10\.|0\.0\.0\.0)/.test(location.hostname);
+    const saved = store.settings.botUrl ? store.settings.botUrl.replace(/\/$/,'') : '';
+    // نتجاهل رابطاً محفوظاً يشير لـ localhost/منفذ 3000 لما نكون على موقع منشور (بقايا تطوير)
+    const savedIsLocal = /localhost|127\.0|:3000/i.test(saved);
+    if(saved && !(!local && savedIsLocal)) return saved;
     // محلياً: بوت الجهاز · على الموقع المنشور: بوت السيرفر على نفس الدومين
-    return /^(localhost|127\.|192\.168\.|10\.|0\.0\.0\.0)/.test(location.hostname)
-      ? 'http://localhost:3000'
-      : location.origin + '/bot';
+    return local ? 'http://localhost:3000' : location.origin + '/bot';
   },
   async status(){
     const r = await fetch(this.url()+'/status', {cache:'no-store'});
