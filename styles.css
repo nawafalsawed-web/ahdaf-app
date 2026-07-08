@@ -49,11 +49,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   border-bottom:1px solid rgba(28,10,54,.05);
 }
 .tb-brand{display:flex;align-items:center;gap:10px;min-width:0}
-/* دائرة هدف صغيرة بدل النقطة — توقيع الهوية */
-.brand-dot{width:15px;height:15px;border-radius:50%;flex:none;position:relative;
-  border:1.6px solid var(--gold);background:transparent}
-.brand-dot::after{content:"";position:absolute;inset:3.5px;border-radius:50%;background:var(--purple)}
-.brand-name{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:.2px;color:var(--night);line-height:1.1}
+.brand-logo{height:23px;width:auto;display:block}
+.rail-logo{display:none}
 .topbar-actions{display:flex;gap:8px;flex:none}
 .icon-btn{
   color:var(--ink-2);display:grid;place-items:center;width:40px;height:40px;border-radius:13px;
@@ -653,6 +650,7 @@ main{padding:18px 16px calc(128px + var(--safe-bot));max-width:680px;margin:0 au
     border-radius:26px;
   }
   .tab{flex:none;padding:13px 0;gap:5px}
+  .rail-logo{display:block;width:56px;height:auto;margin:4px auto 12px;opacity:.95}
   /* المحتوى يتوسّط في المساحة المتبقية بعد الشريط الجانبي */
   main{max-width:960px;margin-inline-start:calc(var(--rail) + 40px + max(20px,(100vw - var(--rail) - 40px - 960px - 40px)/2));margin-inline-end:auto}
   .topbar{padding-inline-start:calc(var(--rail) + 40px + max(20px,(100vw - var(--rail) - 40px - 960px - 40px)/2));padding-inline-end:max(24px,calc((100vw - var(--rail) - 960px)/2))}
