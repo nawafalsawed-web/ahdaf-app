@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>منصة المؤثرين — أهداف</title>
 <script>
+// وضع الدمج: لما تُحمّل داخل تطبيق أهداف (iframe) بـ ?embed=1 — نتخطّى الحارس والشريط السفلي المكرّر
+if(/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed');
 (function(){
+  if(/[?&]embed=1/.test(location.search)) return;   // التطبيق الأب مسؤول عن الحماية
   if(/^(localhost|127\.|192\.168\.|10\.|0\.0\.0\.0)/.test(location.hostname)) return;
   document.documentElement.style.visibility='hidden';
   fetch(location.origin+'/bot/auth/me',{credentials:'same-origin'})
@@ -422,6 +425,10 @@
 </nav>
 <style>
   .wrap{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))!important}
+  /* وضع الدمج داخل تطبيق أهداف: يوفّر التطبيق الأب الشريط العلوي والسفلي */
+  html.embed .app-tabbar{display:none}
+  html.embed .wrap{padding:14px 18px 28px!important;max-width:1040px}
+  html.embed header.top{margin-bottom:10px}
   .app-tabbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:#fff;border-top:1px solid var(--line);
     display:flex;padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));box-shadow:0 -2px 16px rgba(40,10,80,.05)}
   .app-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);

@@ -66,11 +66,14 @@
       <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/></svg>
       <span>العروض</span>
     </button>
-    <a class="tab" href="influencers.html">
+    <button class="tab" data-tab="influencers">
       <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l15-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/><path d="M18 9.5a3.5 3.5 0 010 5"/></svg>
       <span>المؤثرين</span>
-    </a>
+    </button>
   </nav>
+
+  <!-- ===== قسم المؤثرين (مدمج داخل التطبيق) ===== -->
+  <iframe id="infFrame" class="inf-frame" title="منصة المؤثرين" hidden></iframe>
 
   <!-- ===== زر الإضافة العائم ===== -->
   <button class="fab" id="fab" aria-label="إضافة">

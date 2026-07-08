@@ -1613,12 +1613,25 @@ function switchTab(tab){
   activeTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
   $('#searchWrap').hidden=true; $('#searchToggle').style.visibility = tab==='clients'?'visible':'hidden';
-  const fab=$('#fab'); if(fab) fab.style.display = (tab==='tasks'||tab==='home') ? 'none' : '';
+  const fab=$('#fab'); if(fab) fab.style.display = (tab==='tasks'||tab==='home'||tab==='influencers') ? 'none' : '';
+  const main=$('#view'), frame=$('#infFrame');
+  // قسم المؤثرين مدمج عبر iframe مِلء الشاشة داخل هيكل التطبيق
+  if(tab==='influencers'){ if(main) main.style.display='none'; showInfluencers(); return; }
+  if(frame) frame.hidden=true;
+  if(main) main.style.display='';
   window.scrollTo(0,0);
   if(tab==='home') renderHome();
   else if(tab==='clients') renderClients();
   else if(tab==='proposals'){ propsView='home'; renderProposals(); }
   else { PJ_PROJECT=null; PJ_PERSON=null; PJ_SEARCH=''; renderTasks(); }
+}
+// يُظهر قسم المؤثرين المدمج تحت الشريط العلوي وفوق شريط التنقّل
+function showInfluencers(){
+  const frame=$('#infFrame'); if(!frame) return;
+  const tb=document.querySelector('.topbar');
+  frame.style.top = (tb ? Math.round(tb.getBoundingClientRect().bottom) : 60) + 'px';
+  if(!frame.getAttribute('src')) frame.src='influencers.html?embed=1';
+  frame.hidden=false;
 }
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
 
@@ -1645,14 +1658,14 @@ window.openProposalForm=openProposalForm; window.proposalMenu=proposalMenu; wind
 window.openPropNotify=openPropNotify; window.showArchive=showArchive; window.propsHome=propsHome;
 window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFile; window.openStoredFile=openStoredFile;
 window.logout=logout; window.openTeam=openTeam;
-window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab;
+window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab; window.showInfluencers=showInfluencers;
 
 loadMe();   // جلب بيانات المستخدم المسجّل (ثم تحديث لوحة الرئيسية بالاسم)
 
 // افتح التبويب المطلوب (index.html?tab=...) أو الرئيسية افتراضياً
 (function(){
   const t = new URLSearchParams(location.search).get('tab');
-  if(t && ['home','clients','proposals','tasks'].includes(t)) switchTab(t);
+  if(t && ['home','clients','proposals','tasks','influencers'].includes(t)) switchTab(t);
   else switchTab('home');
 })();
 
