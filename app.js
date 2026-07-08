@@ -237,7 +237,7 @@ function renderClients(){
   if(clients.length===0){
     html += `<div class="empty"><span class="emoji">🔍</span><h3>ما فيه نتائج</h3><p>جرّب كلمة ثانية.</p></div>`;
   }else{
-    html += `<div class="card-list">${clients.map(clientCard).join('')}</div>`;
+    html += `<div class="card-list stag">${clients.map(clientCard).join('')}</div>`;
   }
 
   view.innerHTML = html;
@@ -1061,7 +1061,7 @@ function pjPeople(){
 /* ---------- التحميل والتوجيه ---------- */
 async function renderTasks(){
   const view=$('#view');
-  if(!PJ_DATA) view.innerHTML=`<div class="section-head"><h1>المهام</h1></div><div class="pj-loading"><span class="spin"></span> جاري تحميل Projecto…</div>`;
+  if(!PJ_DATA) view.innerHTML = sectionHead('المهام','جاري التحميل من Projecto…') + Array(5).fill('<div class="skel skel-card"></div>').join('');
   try{ const r=await fetch(bot.url()+'/projecto',{credentials:'same-origin'}); PJ_DATA=await r.json(); }catch{}
   paintTasks();
 }
@@ -1122,7 +1122,7 @@ function pjSectionsView(){
   const projects=((PJ_DATA&&PJ_DATA.projects)||[]).filter(p=>p.total>0)
     .sort((a,b)=>(b.total-b.done)-(a.total-a.done)||b.total-a.total);
   if(!projects.length) return `<div class="all-done">ما فيه مشاريع فيها مهام.</div>`;
-  let h=`<div class="pj-grid">`;
+  let h=`<div class="pj-grid stag">`;
   projects.forEach(p=>{
     const pct=p.total?Math.round(100*p.done/p.total):0;
     h+=`<button class="pj-card" style="--pc:${esc(p.color)}" onclick="openProjectoProject(${p.id})">
@@ -1139,7 +1139,7 @@ function pjAvaColor(name){ const cs=['#4C0192','#1f9d55','#c0392b','#2980b9','#d
 function pjPeopleView(){
   const people=pjPeople();
   if(!people.length) return `<div class="all-done">ما فيه لوحات بأسماء أشخاص.</div>`;
-  let h=`<div class="pj-people">`;
+  let h=`<div class="pj-people stag">`;
   people.forEach(pn=>{
     const initial=(pn.name.trim()[0]||'؟');
     h+=`<button class="pj-person" onclick="openPerson('${esc(pjNorm(pn.name))}')">
@@ -1543,11 +1543,21 @@ const HM_ICONS = {
 
 async function renderHome(){
   const view=$('#view');
-  view.innerHTML = homeHtml();
+  view.innerHTML = homeHtml(); enhanceHome();
   if(!PJ_DATA){                       // نجيب مهام Projecto مرّة ثم نحدّث اللوحة
-    try{ const r=await fetch(bot.url()+'/projecto',{credentials:'same-origin'}); PJ_DATA=await r.json(); }catch{}
-    if(activeTab==='home'){ const v=$('#view'); if(v) v.innerHTML=homeHtml(); }
+    try{ const r=await fetch(bot.url()+'/projecto',{credentials:'same-origin'}); PJ_DATA=await r.json(); }catch{ PJ_DATA=PJ_DATA||{}; }
+    if(activeTab==='home'){ const v=$('#view'); if(v){ v.innerHTML=homeHtml(); enhanceHome(); } }
   }
+}
+// عدّاد أرقام تصاعدي لبطاقات الرئيسية
+function enhanceHome(){
+  document.querySelectorAll('.stat-num[data-count]').forEach(el=>{
+    const target=parseInt(el.dataset.count,10)||0;
+    if(target<=0){ el.textContent='0'; return; }
+    const dur=750, t0=performance.now();
+    const step=now=>{ const p=Math.min(1,(now-t0)/dur); el.textContent=Math.round((1-Math.pow(1-p,3))*target); if(p<1)requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
 }
 
 function homeHtml(){
@@ -1556,6 +1566,7 @@ function homeHtml(){
   const clients=store.clients;
   const activeProps=store.proposals.filter(p=>p.stage!=='المعتمد').length;
 
+  const loading=PJ_DATA===null;   // لسه ما جِبنا مهام Projecto
   const connected=!!(PJ_DATA && PJ_DATA.connected);
   const dated=connected ? pjAllTasks().filter(t=>!t.done && t.end).map(t=>({...t,_d:pjDiffDays(t.end)})).filter(t=>t._d!=null) : [];
   const overdue=dated.filter(t=>t._d<0).sort((a,b)=>a._d-b._d);
@@ -1564,24 +1575,26 @@ function homeHtml(){
 
   const stat=(num,label,key,ac,onclick)=>`
     <button class="stat" style="--ac:${ac}" onclick="${onclick}">
-      <span class="stat-top"><span class="stat-num">${num}</span><span class="stat-ic">${HM_ICONS[key]}</span></span>
+      <span class="stat-top"><span class="stat-num" data-count="${num}">0</span><span class="stat-ic">${HM_ICONS[key]}</span></span>
       <span class="stat-label">${label}</span>
     </button>`;
 
   let h=`
     <section class="home-hero">
       <p class="hh-kicker">${esc(dateStr)}</p>
-      <h1 class="hh-title">${greetPhrase()}${name?'، '+esc(name):''} 👋</h1>
+      <h1 class="hh-title">${greetPhrase()}${name?'، '+esc(name):''} <span class="wave">👋</span></h1>
     </section>
-    <div class="stat-grid">
+    <div class="stat-grid stag">
       ${stat(clients.length,'عملاء','clients','#4C0192',"switchTab('clients')")}
       ${stat(overdue.length,'مهام متأخرة','overdue',overdue.length?'#d0402f':'#1f9d55',"switchTab('tasks')")}
       ${stat(soon.length,'هذا الأسبوع','soon','#C0912F',"switchTab('tasks')")}
       ${stat(activeProps,'عروض شغّالة','props','#7a3ec0',"switchTab('proposals')")}
     </div>
-    <div class="home-sec-head"><h2>تركيز اليوم</h2>${focus.length?`<button class="hsh-link" onclick="switchTab('tasks')">الكل ›</button>`:''}</div>`;
+    <div class="home-sec-head"><h2>تركيز اليوم</h2>${(!loading&&focus.length)?`<button class="hsh-link" onclick="switchTab('tasks')">الكل ›</button>`:''}</div>`;
 
-  if(focus.length){
+  if(loading){
+    h+=`<div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div>`;
+  }else if(focus.length){
     h+=focus.map(t=>pjTaskCard(t,true)).join('');
   }else{
     const msg = connected ? 'كل شي تحت السيطرة اليوم.' : (APP_USER&&APP_USER.admin?'اربط Projecto من قسم المهام.':'اطلب من المشرف ربط Projecto.');
@@ -1590,7 +1603,7 @@ function homeHtml(){
 
   h+=`
     <div class="home-sec-head"><h2>إجراءات سريعة</h2></div>
-    <div class="qa-grid">
+    <div class="qa-grid stag">
       <button class="qa qa-primary" onclick="homeQuick('client')"><span class="qa-ic"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></span> عميل جديد</button>
       <button class="qa qa-gold" onclick="homeQuick('proposal')"><span class="qa-ic">${HM_ICONS.props}</span> عرض جديد</button>
       <button class="qa" onclick="switchTab('tasks')"><span class="qa-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 5.5l1 1 1.8-1.9M4 11.5l1 1 1.8-1.9M4 17.5l1 1 1.8-1.9"/></svg></span> كل المهام</button>
@@ -1618,7 +1631,7 @@ function switchTab(tab){
   // قسم المؤثرين مدمج عبر iframe مِلء الشاشة داخل هيكل التطبيق
   if(tab==='influencers'){ if(main) main.style.display='none'; showInfluencers(); return; }
   if(frame) frame.hidden=true;
-  if(main) main.style.display='';
+  if(main){ main.style.display=''; main.classList.remove('vIn'); void main.offsetWidth; main.classList.add('vIn'); }
   window.scrollTo(0,0);
   if(tab==='home') renderHome();
   else if(tab==='clients') renderClients();
