@@ -425,16 +425,12 @@ function openClientForm(editId){
 let APP_USER = null;
 async function loadMe(){
   try{ const r = await fetch(bot.url()+'/auth/me', {credentials:'same-origin'}); if(r.ok){ APP_USER = (await r.json()).user; } }catch{}
-  setGreeting();
+  if(activeTab==='home') renderHome();   // حدّث التحية بالاسم بعد جلب المستخدم
 }
-// تحية شخصية حسب الوقت + اسم المستخدم
-function setGreeting(){
-  const el = $('#greet'); if(!el) return;
-  const h = new Date().getHours();
-  const g = h<12 ? 'صباح الخير' : h<17 ? 'مساء الخير' : 'مساء الخير';
-  let name = '';
-  if(APP_USER){ name = (APP_USER.name||'').trim().split(/\s+/)[0] || (APP_USER.email||'').split('@')[0]; }
-  el.textContent = name ? `${g}، ${name} 👋` : `${g} 👋`;
+function greetPhrase(){ return new Date().getHours()<12 ? 'صباح الخير' : 'مساء الخير'; }
+function userFirstName(){
+  if(!APP_USER) return '';
+  return (APP_USER.name||'').trim().split(/\s+/)[0] || (APP_USER.email||'').split('@')[0] || '';
 }
 async function logout(){
   try{ await fetch(bot.url()+'/auth/logout', {method:'POST', credentials:'same-origin'}); }catch{}
@@ -1533,15 +1529,91 @@ function toISODate(v){
 }
 
 /* ===================================================================
+   قسم: الرئيسية (لوحة اليوم) — نظرة عامة + تركيز اليوم + إجراءات سريعة
+=================================================================== */
+const HM_ICONS = {
+  clients:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.2 19a5.8 5.8 0 0111.6 0"/><path d="M16.5 5.3a3.2 3.2 0 010 5.9"/></svg>',
+  overdue:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>',
+  soon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>',
+  props:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/></svg>',
+};
+
+async function renderHome(){
+  const view=$('#view');
+  view.innerHTML = homeHtml();
+  if(!PJ_DATA){                       // نجيب مهام Projecto مرّة ثم نحدّث اللوحة
+    try{ const r=await fetch(bot.url()+'/projecto',{credentials:'same-origin'}); PJ_DATA=await r.json(); }catch{}
+    if(activeTab==='home'){ const v=$('#view'); if(v) v.innerHTML=homeHtml(); }
+  }
+}
+
+function homeHtml(){
+  const name=userFirstName();
+  const dateStr=new Date().toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long'});
+  const clients=store.clients;
+  const activeProps=store.proposals.filter(p=>p.stage!=='المعتمد').length;
+
+  const connected=!!(PJ_DATA && PJ_DATA.connected);
+  const dated=connected ? pjAllTasks().filter(t=>!t.done && t.end).map(t=>({...t,_d:pjDiffDays(t.end)})).filter(t=>t._d!=null) : [];
+  const overdue=dated.filter(t=>t._d<0).sort((a,b)=>a._d-b._d);
+  const soon=dated.filter(t=>t._d>=0 && t._d<=7).sort((a,b)=>a._d-b._d);
+  const focus=[...overdue,...soon].slice(0,4);
+
+  const stat=(num,label,key,ac,onclick)=>`
+    <button class="stat" style="--ac:${ac}" onclick="${onclick}">
+      <span class="stat-top"><span class="stat-num">${num}</span><span class="stat-ic">${HM_ICONS[key]}</span></span>
+      <span class="stat-label">${label}</span>
+    </button>`;
+
+  let h=`
+    <section class="home-hero">
+      <p class="hh-kicker">${esc(dateStr)}</p>
+      <h1 class="hh-title">${greetPhrase()}${name?'، '+esc(name):''} 👋</h1>
+    </section>
+    <div class="stat-grid">
+      ${stat(clients.length,'عملاء','clients','#4C0192',"switchTab('clients')")}
+      ${stat(overdue.length,'مهام متأخرة','overdue',overdue.length?'#d0402f':'#1f9d55',"switchTab('tasks')")}
+      ${stat(soon.length,'هذا الأسبوع','soon','#C0912F',"switchTab('tasks')")}
+      ${stat(activeProps,'عروض شغّالة','props','#7a3ec0',"switchTab('proposals')")}
+    </div>
+    <div class="home-sec-head"><h2>تركيز اليوم</h2>${focus.length?`<button class="hsh-link" onclick="switchTab('tasks')">الكل ›</button>`:''}</div>`;
+
+  if(focus.length){
+    h+=focus.map(t=>pjTaskCard(t,true)).join('');
+  }else{
+    const msg = connected ? 'كل شي تحت السيطرة اليوم.' : (APP_USER&&APP_USER.admin?'اربط Projecto من قسم المهام.':'اطلب من المشرف ربط Projecto.');
+    h+=`<div class="focus-empty"><span class="fe-ic">✨</span><div><b>${connected?'ما فيه مهام متأخرة':'المهام غير مربوطة'}</b><p>${msg}</p></div></div>`;
+  }
+
+  h+=`
+    <div class="home-sec-head"><h2>إجراءات سريعة</h2></div>
+    <div class="qa-grid">
+      <button class="qa qa-primary" onclick="homeQuick('client')"><span class="qa-ic"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></span> عميل جديد</button>
+      <button class="qa qa-gold" onclick="homeQuick('proposal')"><span class="qa-ic">${HM_ICONS.props}</span> عرض جديد</button>
+      <button class="qa" onclick="switchTab('tasks')"><span class="qa-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 5.5l1 1 1.8-1.9M4 11.5l1 1 1.8-1.9M4 17.5l1 1 1.8-1.9"/></svg></span> كل المهام</button>
+      <a class="qa" href="influencers.html"><span class="qa-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l15-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg></span> المؤثرين</a>
+    </div>`;
+
+  return h;
+}
+
+function homeQuick(kind){
+  if(kind==='client'){ switchTab('clients'); openClientForm(); }
+  else if(kind==='proposal'){ switchTab('proposals'); openProposalForm(); }
+}
+
+/* ===================================================================
    التنقل
 =================================================================== */
-let activeTab='clients';
+let activeTab='home';
 function switchTab(tab){
   activeTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
   $('#searchWrap').hidden=true; $('#searchToggle').style.visibility = tab==='clients'?'visible':'hidden';
-  const fab=$('#fab'); if(fab) fab.style.display = tab==='tasks' ? 'none' : '';
-  if(tab==='clients') renderClients();
+  const fab=$('#fab'); if(fab) fab.style.display = (tab==='tasks'||tab==='home') ? 'none' : '';
+  window.scrollTo(0,0);
+  if(tab==='home') renderHome();
+  else if(tab==='clients') renderClients();
   else if(tab==='proposals'){ propsView='home'; renderProposals(); }
   else { PJ_PROJECT=null; PJ_PERSON=null; PJ_SEARCH=''; renderTasks(); }
 }
@@ -1570,15 +1642,15 @@ window.openProposalForm=openProposalForm; window.proposalMenu=proposalMenu; wind
 window.openPropNotify=openPropNotify; window.showArchive=showArchive; window.propsHome=propsHome;
 window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFile; window.openStoredFile=openStoredFile;
 window.logout=logout; window.openTeam=openTeam;
+window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab;
 
-setGreeting();   // تحية فورية حسب الوقت
-loadMe();        // جلب بيانات المستخدم المسجّل (ثم تحديث التحية بالاسم)
+loadMe();   // جلب بيانات المستخدم المسجّل (ثم تحديث لوحة الرئيسية بالاسم)
 
-// افتح التبويب المطلوب عند الرجوع من قسم المؤثرين (index.html?tab=...)
+// افتح التبويب المطلوب (index.html?tab=...) أو الرئيسية افتراضياً
 (function(){
   const t = new URLSearchParams(location.search).get('tab');
-  if(t && ['clients','proposals','tasks'].includes(t)) switchTab(t);
-  else renderClients();
+  if(t && ['home','clients','proposals','tasks'].includes(t)) switchTab(t);
+  else switchTab('home');
 })();
 
 // أثناء التطوير: ألغِ أي service worker قديم وامسح الكاش (يمنع النسخ العالقة)
