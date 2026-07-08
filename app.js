@@ -206,6 +206,11 @@ $('#sheetBackdrop').addEventListener('click', ()=>sheet.close());
 =================================================================== */
 let currentSearch = '';
 
+// رأس قسم موحّد (عنوان كبير + وصف فرعي + إجراء اختياري)
+function sectionHead(title, sub, action){
+  return `<div class="section-head"><div class="sh-main"><h1>${esc(title)}</h1>${sub?`<div class="sub">${sub}</div>`:''}</div>${action||''}</div>`;
+}
+
 function renderClients(){
   const view = $('#view');
   let clients = store.clients;
@@ -226,16 +231,13 @@ function renderClients(){
     return;
   }
 
-  let html = `
-    <div class="section-head">
-      <h1>العملاء</h1>
-      <span class="count">${store.clients.length} عميل</span>
-    </div>`;
+  const groups = store.clients.filter(c=>c.groupLink).length;
+  let html = sectionHead('العملاء', `${store.clients.length} عميل${groups?` · ${groups} قروب`:''}`);
 
   if(clients.length===0){
     html += `<div class="empty"><span class="emoji">🔍</span><h3>ما فيه نتائج</h3><p>جرّب كلمة ثانية.</p></div>`;
   }else{
-    clients.forEach(c=>{ html += clientCard(c); });
+    html += `<div class="card-list">${clients.map(clientCard).join('')}</div>`;
   }
 
   view.innerHTML = html;
@@ -630,9 +632,9 @@ let propsView = 'home';
 function renderProposals(){
   if(propsView === 'archive') return renderProposalArchive();
   const all = store.proposals;
+  const activeProps = all.filter(p=>p.stage!=='المعتمد').length;
   const pgCount = Object.keys(store.settings.propGroups||{}).length;
-  $('#view').innerHTML = `
-    <div class="section-head"><h1>العروض</h1></div>
+  $('#view').innerHTML = sectionHead('العروض', `${all.length} عرض${activeProps?` · ${activeProps} قيد العمل`:''}`) + `
     <div class="hub">
       <button class="hub-card" onclick="openProposalForm()">
         <span class="hub-ic req">＋</span>
@@ -1085,6 +1087,7 @@ function pjHeader(){
   const err=d.error?`<div class="pj-error">⚠️ ${esc(d.error)}${APP_USER&&APP_USER.admin?` — <a onclick="openProjectoConnect()">حدّث الربط</a>`:''}</div>`:'';
   const seg=(k,label)=>`<button class="pj-seg ${PJ_VIEW===k?'on':''}" onclick="pjSetView('${k}')">${label}</button>`;
   return `
+    ${sectionHead('المهام', 'كل مهام الفريق — تُحدَّث تلقائياً من Projecto')}
     <div class="pj-syncbar">
       <span class="pj-sync-info"><span class="pj-dot"></span> ${stats.projects} مشروع · ${stats.tasks} مهمة</span>
       <span class="pj-sync-right"><span class="pj-ago">${timeAgo(d.lastSync)}</span>
