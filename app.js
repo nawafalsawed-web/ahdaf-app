@@ -1625,11 +1625,9 @@ function switchTab(tab){
   else if(tab==='proposals'){ propsView='home'; renderProposals(); }
   else { PJ_PROJECT=null; PJ_PERSON=null; PJ_SEARCH=''; renderTasks(); }
 }
-// يُظهر قسم المؤثرين المدمج تحت الشريط العلوي وفوق شريط التنقّل
+// يُظهر قسم المؤثرين المدمج (iframe مِلء الشاشة، والشريطان يطفوان فوقه)
 function showInfluencers(){
   const frame=$('#infFrame'); if(!frame) return;
-  const tb=document.querySelector('.topbar');
-  frame.style.top = (tb ? Math.round(tb.getBoundingClientRect().bottom) : 60) + 'px';
   if(!frame.getAttribute('src')) frame.src='influencers.html?embed=1';
   frame.hidden=false;
 }
