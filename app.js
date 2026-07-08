@@ -1637,8 +1637,6 @@ function enhanceHome(){
   });
 }
 
-// علامة أهداف (المثلثات) بالذهبي — زخرفة الهوية
-const RINGS_SVG=`<img class="hero-mark" src="assets/mark-gold.png" alt="" aria-hidden="true">`;
 
 function homeHtml(){
   const name=userFirstName();
@@ -1669,7 +1667,6 @@ function homeHtml(){
 
   let h=`
     <section class="hero">
-      ${RINGS_SVG}
       <p class="hero-kicker">${esc(dateStr)}</p>
       <h1 class="hero-title">${greetPhrase()}${name?'، '+esc(name):''} <span class="wave">👋</span></h1>
       <p class="hero-sub">${mood}</p>

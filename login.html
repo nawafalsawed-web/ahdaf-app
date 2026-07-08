@@ -19,14 +19,9 @@
     background:radial-gradient(130% 160% at 85% -20%,#3A1566 0%,#1C0A36 52%,#130626 100%);
     color:var(--ink);min-height:100vh;min-height:100dvh;
     display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
-  /* علامة أهداف (المثلثات) الذهبية — زخرفة الهوية */
-  .mark{position:fixed;pointer-events:none;width:340px;height:auto;opacity:.14;
-    inset-inline-end:-70px;top:-50px}
-  .mark2{inset-inline-end:auto;inset-inline-start:-110px;top:auto;bottom:-90px;width:420px;opacity:.09}
   .wrap{position:relative;z-index:1;width:100%;max-width:400px;animation:rise .6s ease both}
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
   .brand-head{text-align:center;margin-bottom:26px}
-  .brand-mark{width:54px;height:auto;display:block;margin:0 auto 16px}
   .brand img{width:172px;height:auto;display:block;margin:0 auto}
   .tag{color:rgba(231,217,168,.85);font-size:13px;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:10px}
   .tag::before,.tag::after{content:"";width:26px;height:1px;background:rgba(201,162,39,.5)}
@@ -50,11 +45,8 @@
 </style>
 </head>
 <body>
-  <img class="mark" src="assets/mark-gold.png" alt="" aria-hidden="true">
-  <img class="mark mark2" src="assets/mark-gold.png" alt="" aria-hidden="true">
   <div class="wrap">
   <div class="brand-head">
-    <img class="brand-mark" src="assets/mark-cream.png" alt="">
     <div class="brand"><img src="assets/logo-cream.png" alt="أهداف"></div>
     <div class="tag" style="margin-top:14px">صالة عمل الفريق</div>
   </div>
