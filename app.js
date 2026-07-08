@@ -304,7 +304,8 @@ function renderClients(){
   }
 
   const groups = store.clients.filter(c=>c.groupLink).length;
-  let html = sectionHead('العملاء', `${store.clients.length} عميل${groups?` · ${groups} قروب`:''}`);
+  let html = sectionHead('العملاء', `${store.clients.length} عميل${groups?` · ${groups} قروب`:''}`,
+    `<button class="sh-action" onclick="openClientForm()">＋ عميل جديد</button>`);
 
   if(clients.length===0){
     html += `<div class="empty"><span class="emoji">🔍</span><h3>ما فيه نتائج</h3><p>جرّب كلمة ثانية.</p></div>`;
@@ -707,7 +708,8 @@ function renderProposals(){
   const all = store.proposals;
   const activeProps = all.filter(p=>p.stage!=='المعتمد').length;
   const pgCount = Object.keys(store.settings.propGroups||{}).length;
-  $('#view').innerHTML = sectionHead('العروض', `${all.length} عرض${activeProps?` · ${activeProps} قيد العمل`:''}`) + `
+  $('#view').innerHTML = sectionHead('العروض', `${all.length} عرض${activeProps?` · ${activeProps} قيد العمل`:''}`,
+    `<button class="sh-action" onclick="openProposalForm()">＋ عرض جديد</button>`) + `
     <div class="hub">
       <button class="hub-card" onclick="openProposalForm()">
         <span class="hub-ic req">＋</span>
@@ -1624,7 +1626,7 @@ async function renderHome(){
 }
 // عدّاد أرقام تصاعدي لبطاقات الرئيسية
 function enhanceHome(){
-  document.querySelectorAll('.stat-num[data-count]').forEach(el=>{
+  document.querySelectorAll('[data-count]').forEach(el=>{
     const target=parseInt(el.dataset.count,10)||0;
     if(target<=0){ el.textContent='0'; return; }
     const dur=750, t0=performance.now();
@@ -1632,6 +1634,15 @@ function enhanceHome(){
     requestAnimationFrame(step);
   });
 }
+
+// دوائر الهدف الذهبية — توقيع الهوية (أهداف = أهداف تُصاب)
+const RINGS_SVG=`<svg class="hero-rings" viewBox="0 0 320 320" fill="none" aria-hidden="true">
+  <circle cx="160" cy="160" r="152" stroke="#C9A227" stroke-opacity=".22"/>
+  <circle cx="160" cy="160" r="114" stroke="#C9A227" stroke-opacity=".3" stroke-dasharray="3 8"/>
+  <circle cx="160" cy="160" r="76" stroke="#C9A227" stroke-opacity=".4"/>
+  <circle cx="160" cy="160" r="40" stroke="#C9A227" stroke-opacity=".5"/>
+  <circle cx="160" cy="160" r="7" fill="#C9A227" fill-opacity=".75"/>
+</svg>`;
 
 function homeHtml(){
   const name=userFirstName();
@@ -1646,24 +1657,48 @@ function homeHtml(){
   const soon=dated.filter(t=>t._d>=0 && t._d<=7).sort((a,b)=>a._d-b._d);
   const focus=[...overdue,...soon].slice(0,4);
 
-  const stat=(num,label,key,ac,onclick)=>`
-    <button class="stat" style="--ac:${ac}" onclick="${onclick}">
-      <span class="stat-top"><span class="stat-num" data-count="${num}">0</span><span class="stat-ic">${HM_ICONS[key]}</span></span>
-      <span class="stat-label">${label}</span>
+  // جملة الحال — سطر واحد يلخّص اليوم
+  let mood;
+  if(loading) mood='لحظة، نجهّز لوحة يومك…';
+  else if(!connected) mood=`عندك <b>${clients.length}</b> عميل و<b>${activeProps}</b> عروض قيد العمل.`;
+  else if(overdue.length) mood=`عندك <b>${overdue.length}</b> ${overdue.length===1?'مهمة متأخرة':'مهام متأخرة'} تحتاج نظرتك اليوم.`;
+  else if(soon.length) mood=`ما فيه متأخرات — و<b>${soon.length}</b> ${soon.length===1?'مهمة':'مهام'} تستحق خلال الأسبوع.`;
+  else mood='كل شي تحت السيطرة. يوم صافي.';
+
+  const hstat=(num,label,onclick,alert)=>`
+    <button class="hstat${alert?' alert':''}" onclick="${onclick}">
+      <span class="hstat-num" data-count="${num}">0</span>
+      <span class="hstat-label">${label}</span>
     </button>`;
 
   let h=`
-    <section class="home-hero">
-      <p class="hh-kicker">${esc(dateStr)}</p>
-      <h1 class="hh-title">${greetPhrase()}${name?'، '+esc(name):''} <span class="wave">👋</span></h1>
-    </section>
-    <div class="stat-grid stag">
-      ${stat(clients.length,'عملاء','clients','#4C0192',"switchTab('clients')")}
-      ${stat(overdue.length,'مهام متأخرة','overdue',overdue.length?'#d0402f':'#1f9d55',"switchTab('tasks')")}
-      ${stat(soon.length,'هذا الأسبوع','soon','#C0912F',"switchTab('tasks')")}
-      ${stat(activeProps,'عروض شغّالة','props','#7a3ec0',"switchTab('proposals')")}
-    </div>
-    <div class="home-sec-head"><h2>تركيز اليوم</h2>${(!loading&&focus.length)?`<button class="hsh-link" onclick="switchTab('tasks')">الكل ›</button>`:''}</div>`;
+    <section class="hero">
+      ${RINGS_SVG}
+      <p class="hero-kicker">${esc(dateStr)}</p>
+      <h1 class="hero-title">${greetPhrase()}${name?'، '+esc(name):''} <span class="wave">👋</span></h1>
+      <p class="hero-sub">${mood}</p>
+      <div class="hero-stats">
+        ${hstat(clients.length,'عميل',"switchTab('clients')")}
+        ${hstat(overdue.length,'مهام متأخرة',"switchTab('tasks')",overdue.length>0)}
+        ${hstat(soon.length,'هذا الأسبوع',"switchTab('tasks')")}
+        ${hstat(activeProps,'عروض قيد العمل',"switchTab('proposals')")}
+      </div>
+    </section>`;
+
+  // وصول سريع للعملاء — دوائر شعارات
+  if(clients.length){
+    h+=`
+    <div class="home-sec-head"><h2>عملاؤك</h2><button class="hsh-link" onclick="switchTab('clients')">الكل ›</button></div>
+    <div class="strip stag">${clients.slice(0,10).map(c=>`
+      <button class="strip-item" onclick="clientMenu('${c.id}')">
+        ${c.logo?`<span class="strip-ava img"><img src="${c.logo}" alt=""></span>`
+                :`<span class="strip-ava" style="background:${colorFor(c)}">${esc(initials(c.name))}</span>`}
+        <span class="strip-name">${esc((c.name||'').trim())}</span>
+      </button>`).join('')}
+    </div>`;
+  }
+
+  h+=`<div class="home-sec-head"><h2>تركيز اليوم</h2>${(!loading&&focus.length)?`<button class="hsh-link" onclick="switchTab('tasks')">الكل ›</button>`:''}</div>`;
 
   if(loading){
     h+=`<div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div>`;
@@ -1671,16 +1706,16 @@ function homeHtml(){
     h+=focus.map(t=>pjTaskCard(t,true)).join('');
   }else{
     const msg = connected ? 'كل شي تحت السيطرة اليوم.' : (APP_USER&&APP_USER.admin?'اربط Projecto من قسم المهام.':'اطلب من المشرف ربط Projecto.');
-    h+=`<div class="focus-empty"><span class="fe-ic">✨</span><div><b>${connected?'ما فيه مهام متأخرة':'المهام غير مربوطة'}</b><p>${msg}</p></div></div>`;
+    h+=`<div class="focus-empty"><span class="fe-ic">🎯</span><div><b>${connected?'ما فيه مهام متأخرة':'المهام غير مربوطة'}</b><p>${msg}</p></div></div>`;
   }
 
   h+=`
     <div class="home-sec-head"><h2>إجراءات سريعة</h2></div>
-    <div class="qa-grid stag">
-      <button class="qa qa-primary" onclick="homeQuick('client')"><span class="qa-ic"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></span> عميل جديد</button>
+    <div class="qa-row stag">
+      <button class="qa qa-primary" onclick="homeQuick('client')"><span class="qa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span> عميل جديد</button>
       <button class="qa qa-gold" onclick="homeQuick('proposal')"><span class="qa-ic">${HM_ICONS.props}</span> عرض جديد</button>
-      <button class="qa" onclick="switchTab('tasks')"><span class="qa-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 5.5l1 1 1.8-1.9M4 11.5l1 1 1.8-1.9M4 17.5l1 1 1.8-1.9"/></svg></span> كل المهام</button>
-      <a class="qa" href="influencers.html"><span class="qa-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l15-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg></span> المؤثرين</a>
+      <button class="qa" onclick="switchTab('tasks')"><span class="qa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 5.5l1 1 1.8-1.9M4 11.5l1 1 1.8-1.9M4 17.5l1 1 1.8-1.9"/></svg></span> كل المهام</button>
+      <button class="qa" onclick="switchTab('influencers')"><span class="qa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l15-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg></span> المؤثرين</button>
     </div>`;
 
   return h;
