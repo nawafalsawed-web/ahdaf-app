@@ -1637,14 +1637,8 @@ function enhanceHome(){
   });
 }
 
-// دوائر الهدف الذهبية — توقيع الهوية (أهداف = أهداف تُصاب)
-const RINGS_SVG=`<svg class="hero-rings" viewBox="0 0 320 320" fill="none" aria-hidden="true">
-  <circle cx="160" cy="160" r="152" stroke="#C9A227" stroke-opacity=".22"/>
-  <circle cx="160" cy="160" r="114" stroke="#C9A227" stroke-opacity=".3" stroke-dasharray="3 8"/>
-  <circle cx="160" cy="160" r="76" stroke="#C9A227" stroke-opacity=".4"/>
-  <circle cx="160" cy="160" r="40" stroke="#C9A227" stroke-opacity=".5"/>
-  <circle cx="160" cy="160" r="7" fill="#C9A227" fill-opacity=".75"/>
-</svg>`;
+// علامة أهداف (المثلثات) بالذهبي — زخرفة الهوية
+const RINGS_SVG=`<img class="hero-mark" src="assets/mark-gold.png" alt="" aria-hidden="true">`;
 
 function homeHtml(){
   const name=userFirstName();

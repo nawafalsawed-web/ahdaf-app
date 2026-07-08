@@ -19,18 +19,14 @@
     background:radial-gradient(130% 160% at 85% -20%,#3A1566 0%,#1C0A36 52%,#130626 100%);
     color:var(--ink);min-height:100vh;min-height:100dvh;
     display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
-  /* دوائر الهدف الذهبية — توقيع الهوية */
-  .rings{position:fixed;inset-inline-end:-140px;top:-120px;width:520px;height:520px;pointer-events:none;
-    animation:turn 140s linear infinite}
-  .rings2{inset-inline-end:auto;inset-inline-start:-200px;top:auto;bottom:-260px;width:560px;height:560px;opacity:.55}
-  @keyframes turn{to{transform:rotate(360deg)}}
+  /* علامة أهداف (المثلثات) الذهبية — زخرفة الهوية */
+  .mark{position:fixed;pointer-events:none;width:340px;height:auto;opacity:.14;
+    inset-inline-end:-70px;top:-50px}
+  .mark2{inset-inline-end:auto;inset-inline-start:-110px;top:auto;bottom:-90px;width:420px;opacity:.09}
   .wrap{position:relative;z-index:1;width:100%;max-width:400px;animation:rise .6s ease both}
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
   .brand-head{text-align:center;margin-bottom:26px}
-  .brand-mark{width:52px;height:52px;margin:0 auto 14px;border-radius:50%;border:1.6px solid var(--gold);
-    display:grid;place-items:center;position:relative}
-  .brand-mark::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1px dashed rgba(201,162,39,.4)}
-  .brand-mark span{width:14px;height:14px;border-radius:50%;background:var(--gold)}
+  .brand-mark{width:54px;height:auto;display:block;margin:0 auto 16px}
   .brand img{width:172px;height:auto;display:block;margin:0 auto}
   .tag{color:rgba(231,217,168,.85);font-size:13px;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:10px}
   .tag::before,.tag::after{content:"";width:26px;height:1px;background:rgba(201,162,39,.5)}
@@ -54,21 +50,11 @@
 </style>
 </head>
 <body>
-  <svg class="rings" viewBox="0 0 320 320" fill="none" aria-hidden="true">
-    <circle cx="160" cy="160" r="152" stroke="#C9A227" stroke-opacity=".2"/>
-    <circle cx="160" cy="160" r="114" stroke="#C9A227" stroke-opacity=".28" stroke-dasharray="3 8"/>
-    <circle cx="160" cy="160" r="76" stroke="#C9A227" stroke-opacity=".36"/>
-    <circle cx="160" cy="160" r="40" stroke="#C9A227" stroke-opacity=".45"/>
-    <circle cx="160" cy="160" r="7" fill="#C9A227" fill-opacity=".7"/>
-  </svg>
-  <svg class="rings rings2" viewBox="0 0 320 320" fill="none" aria-hidden="true">
-    <circle cx="160" cy="160" r="152" stroke="#C9A227" stroke-opacity=".16"/>
-    <circle cx="160" cy="160" r="100" stroke="#C9A227" stroke-opacity=".22" stroke-dasharray="3 9"/>
-    <circle cx="160" cy="160" r="52" stroke="#C9A227" stroke-opacity=".28"/>
-  </svg>
+  <img class="mark" src="assets/mark-gold.png" alt="" aria-hidden="true">
+  <img class="mark mark2" src="assets/mark-gold.png" alt="" aria-hidden="true">
   <div class="wrap">
   <div class="brand-head">
-    <div class="brand-mark"><span></span></div>
+    <img class="brand-mark" src="assets/mark-cream.png" alt="">
     <div class="brand"><img src="assets/logo-cream.png" alt="أهداف"></div>
     <div class="tag" style="margin-top:14px">صالة عمل الفريق</div>
   </div>
