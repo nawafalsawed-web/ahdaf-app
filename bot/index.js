@@ -297,7 +297,7 @@ app.post('/data', requireAuth, (req, res) => {
   if (cur.rev && Number(baseRev) !== cur.rev) return res.status(409).json({ ok: false, conflict: true, rev: cur.rev, data: cur.data });
   const next = {
     rev: (cur.rev || 0) + 1, updatedAt: Date.now(), updatedBy: req.user.email,
-    data: { clients: data.clients || [], proposals: data.proposals || [], tombstones: (data.tombstones || []).slice(0, 300) },
+    data: { clients: data.clients || [], proposals: data.proposals || [], wgroups: data.wgroups || [], tombstones: (data.tombstones || []).slice(0, 300) },
   };
   try { saveAppData(next); } catch (e) { return res.status(500).json({ ok: false, error: e.message }); }
   res.json({ ok: true, rev: next.rev });

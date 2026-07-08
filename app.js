@@ -11,8 +11,8 @@ const DIAL_CODES = ['+966','+971','+973','+974','+965','+968','+20','+962','+90'
 /* ---------- طبقة التخزين ---------- */
 const store = {
   read(){
-    try{ const d = JSON.parse(localStorage.getItem(DB_KEY)) || {}; return {clients:d.clients||[], settings:d.settings||{}, tasks:d.tasks||[], proposals:d.proposals||[], files:d.files||[], tombstones:d.tombstones||[]}; }
-    catch{ return {clients:[],settings:{},tasks:[],proposals:[],files:[],tombstones:[]}; }
+    try{ const d = JSON.parse(localStorage.getItem(DB_KEY)) || {}; return {clients:d.clients||[], settings:d.settings||{}, tasks:d.tasks||[], proposals:d.proposals||[], files:d.files||[], wgroups:d.wgroups||[], tombstones:d.tombstones||[]}; }
+    catch{ return {clients:[],settings:{},tasks:[],proposals:[],files:[],wgroups:[],tombstones:[]}; }
   },
   write(data){ localStorage.setItem(DB_KEY, JSON.stringify(data)); },
   get clients(){ return this.read().clients; },
@@ -32,6 +32,10 @@ const store = {
   get files(){ return this.read().files; },
   addFile(f){ const d=this.read(); d.files.unshift(f); this.write(d); },
   removeFile(id){ const d=this.read(); d.files=d.files.filter(x=>x.id!==id); this.write(d); },
+  get wgroups(){ return this.read().wgroups; },
+  addGroup(g){ const d=this.read(); d.wgroups.unshift({...g,_ts:Date.now()}); this.write(d); cloud.queue(); },
+  updateGroup(id, patch){ const d=this.read(); const i=d.wgroups.findIndex(x=>x.id===id); if(i>-1){d.wgroups[i]={...d.wgroups[i],...patch,_ts:Date.now()}; this.write(d); cloud.queue();} },
+  removeGroup(id){ const d=this.read(); d.wgroups=d.wgroups.filter(x=>x.id!==id); d.tombstones.unshift({id,ts:Date.now()}); this.write(d); cloud.queue(); },
 };
 
 /* ---------- البوت (الأتمتة) ---------- */
@@ -89,7 +93,7 @@ const cloud = {
   rev(){ return +(localStorage.getItem(this.REV_KEY)||0); },
   setRev(r){ localStorage.setItem(this.REV_KEY, String(r)); },
   lastSync:0, _timer:null, _busy:false, _again:false,
-  payload(){ const d=store.read(); return {clients:d.clients, proposals:d.proposals, tombstones:(d.tombstones||[]).slice(0,300)}; },
+  payload(){ const d=store.read(); return {clients:d.clients, proposals:d.proposals, wgroups:d.wgroups, tombstones:(d.tombstones||[]).slice(0,300)}; },
   merge(remote){
     const d = store.read();
     const tombs = new Map();
@@ -103,6 +107,7 @@ const cloud = {
     };
     d.clients = mergeList(d.clients, remote.clients||[]);
     d.proposals = mergeList(d.proposals, remote.proposals||[]);
+    d.wgroups = mergeList(d.wgroups||[], remote.wgroups||[]);
     d.tombstones = [...tombs].map(([id,ts])=>({id,ts})).sort((a,b)=>b.ts-a.ts).slice(0,300);
     store.write(d);
   },
@@ -125,7 +130,7 @@ const cloud = {
       const after = JSON.stringify(this.payload());
       if(after !== before) cloudRender();
       // لو الدمج طلّع عناصر محلية ما هي عند السيرفر، ادفعها
-      if(after !== JSON.stringify({clients:d.data.clients||[], proposals:d.data.proposals||[], tombstones:(d.data.tombstones||[]).slice(0,300)})) this.queue(300);
+      if(after !== JSON.stringify({clients:d.data.clients||[], proposals:d.data.proposals||[], wgroups:d.data.wgroups||[], tombstones:(d.data.tombstones||[]).slice(0,300)})) this.queue(300);
     }catch{}
   },
   queue(ms=1200){ clearTimeout(this._timer); this._timer=setTimeout(()=>this.push(), ms); },
@@ -148,6 +153,7 @@ const cloud = {
 // يعيد رسم التبويب الحالي بعد وصول بيانات جديدة من المزامنة
 function cloudRender(){
   if(activeTab==='home') renderHome();
+  else if(activeTab==='groups') renderGroups();
   else if(activeTab==='clients') renderClients();
   else if(activeTab==='proposals') renderProposals();
 }
@@ -1720,6 +1726,136 @@ function homeQuick(kind){
 }
 
 /* ===================================================================
+   قسم: قروبات العمل (تيليقرام + واتساب) — دليل روابط مشترك للفريق
+=================================================================== */
+let grpPlatform = 'telegram';
+const TG_MINI = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M21.9 4.6c.3-1.2-.9-2.2-2-1.7L2.9 9.6c-1.2.5-1.1 2.2.1 2.6l4.6 1.4 1.8 5.6c.4 1.1 1.8 1.4 2.6.5l2.5-2.7 4.6 3.4c1 .7 2.4.2 2.7-1l3.1-14.8zM9.4 13.2l8.7-5.5c.4-.2.7.3.4.6l-7.2 6.7-.3 3.1-1.6-4.9z"/></svg>';
+const WA_MINI = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5.1-1.3A10 10 0 1012 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-3-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.3-.4 0-.5.2-.7l.4-.5c.1-.2.2-.3.3-.5v-.5L9.7 7.7c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.9.9-1.2 2.2-.3 3.9a12 12 0 004.5 4.3c1.7.8 2.5.9 3.4.7.6-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2z"/></svg>';
+
+function renderGroups(){
+  const all = store.wgroups;
+  const tg = all.filter(g=>g.platform==='telegram').length;
+  const wa = all.length - tg;
+  const list = all.filter(g=>g.platform===grpPlatform);
+  const seg=(k,label,n)=>`<button class="pj-seg ${grpPlatform===k?'on':''}" onclick="grpSet('${k}')">${label}${n?` <span class="seg-count" style="margin-inline-start:4px">${n}</span>`:''}</button>`;
+
+  let body;
+  if(list.length){
+    body = `<div class="card-list stag">${list.map(groupCard).join('')}</div>`;
+  }else{
+    const isTg = grpPlatform==='telegram';
+    body = `<div class="empty">
+      <span class="emoji">${isTg?'✈️':'💬'}</span>
+      <h3>ما فيه قروبات ${isTg?'تيليقرام':'واتساب'} بعد</h3>
+      <p>أضف روابط قروبات الشغل عشان الفريق كله يوصلها من مكان واحد.</p>
+      <button class="cta" onclick="openGroupForm()">+ إضافة قروب</button>
+    </div>`;
+  }
+
+  $('#view').innerHTML = sectionHead('قروبات العمل', `${all.length} قروب — يوصلها كل الفريق`,
+    `<button class="sh-action" onclick="openGroupForm()">＋ قروب جديد</button>`) + `
+    <div class="pj-segs">${seg('telegram','تيليقرام',tg)}${seg('whatsapp','واتساب',wa)}</div>
+    ${body}`;
+}
+function grpSet(k){ grpPlatform=k; renderGroups(); }
+
+function groupCard(g){
+  const isTg = g.platform==='telegram';
+  return `
+    <div class="client-card" onclick="openGroupLink('${g.id}')" role="button">
+      <div class="avatar" style="background:${isTg?'#229ED9':'#25D366'}">${isTg?TG_MINI:WA_MINI}</div>
+      <div class="client-info">
+        <div class="client-name">${esc(g.name)}</div>
+        <div class="client-meta">${esc(g.note || (isTg?'قروب تيليقرام':'قروب واتساب'))}</div>
+      </div>
+      <div class="client-actions">
+        <button class="more-btn" onclick="event.stopPropagation();groupMenu('${g.id}')" aria-label="خيارات">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 8a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4z"/></svg>
+        </button>
+      </div>
+    </div>`;
+}
+function openGroupLink(id){
+  const g=store.wgroups.find(x=>x.id===id); if(!g||!g.link) return;
+  window.open(g.link,'_blank');
+}
+
+function openGroupForm(editId){
+  const editing = editId ? store.wgroups.find(g=>g.id===editId) : null;
+  const g = editing || {platform:grpPlatform};
+  sheet.open(`
+    <h2>${editing?'تعديل القروب':'قروب جديد'}</h2>
+    <p class="sub">رابط قروب شغل يشوفه كل الفريق.</p>
+    <div class="field">
+      <label>اسم القروب *</label>
+      <input id="g_name" value="${esc(g.name||'')}" placeholder="مثال: تشغيل — كيمارت" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>المنصة</label>
+      <div class="prio-row">
+        <button class="prio-chip ${g.platform==='telegram'?'on':''}" style="--pc:#229ED9" data-p="telegram">✈️ تيليقرام</button>
+        <button class="prio-chip ${g.platform==='whatsapp'?'on':''}" style="--pc:#25D366" data-p="whatsapp">💬 واتساب</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>رابط القروب *</label>
+      <input id="g_link" value="${esc(g.link||'')}" placeholder="https://t.me/… أو https://chat.whatsapp.com/…" dir="ltr" style="text-align:left" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>وصف مختصر (اختياري)</label>
+      <input id="g_note" value="${esc(g.note||'')}" placeholder="مثال: متابعة يومية مع فريق التنفيذ" autocomplete="off">
+    </div>
+    <button class="btn-primary" id="g_save">${editing?'حفظ التعديلات':'إضافة القروب'}</button>
+    <button class="btn-ghost" onclick="sheet.close()">إلغاء</button>
+  `);
+  let platform = g.platform||'telegram';
+  document.querySelectorAll('.prio-chip[data-p]').forEach(b=>b.addEventListener('click',()=>{
+    platform=b.dataset.p;
+    document.querySelectorAll('.prio-chip[data-p]').forEach(x=>x.classList.toggle('on',x===b));
+  }));
+  $('#g_save').addEventListener('click',()=>{
+    const name=$('#g_name').value.trim();
+    let link=$('#g_link').value.trim().replace(/["']/g,'');
+    if(!name){ toast('اكتب اسم القروب'); return; }
+    if(!link){ toast('حط رابط القروب'); return; }
+    if(!/^https?:\/\//i.test(link)) link='https://'+link;
+    const payload={name, link, note:$('#g_note').value.trim(), platform};
+    if(editing){ store.updateGroup(editId, payload); toast('تم حفظ التعديلات'); }
+    else{ store.addGroup({id:'g'+Date.now().toString(36), ...payload}); toast(`أُضيف ${name} ✓`); }
+    grpPlatform=platform;
+    sheet.close(); renderGroups();
+  });
+}
+
+function groupMenu(id){
+  const g=store.wgroups.find(x=>x.id===id); if(!g) return;
+  sheet.open(`
+    <h2>${esc(g.name)}</h2>
+    <p class="sub">${g.platform==='telegram'?'✈️ تيليقرام':'💬 واتساب'}${g.note?' · '+esc(g.note):''}</p>
+    <div class="action-list">
+      <button class="action-item" onclick="sheet.close();openGroupLink('${g.id}')">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+        فتح القروب</button>
+      <button class="action-item" onclick="copyGroupLink('${g.id}')">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        نسخ الرابط</button>
+      <button class="action-item" onclick="sheet.close();openGroupForm('${g.id}')">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 114 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+        تعديل</button>
+      <button class="action-item danger" onclick="(function(){store.removeGroup('${g.id}');toast('تم الحذف');sheet.close();renderGroups();})()">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+        حذف</button>
+    </div>
+    <button class="btn-ghost" onclick="sheet.close()">إغلاق</button>
+  `);
+}
+async function copyGroupLink(id){
+  const g=store.wgroups.find(x=>x.id===id); if(!g) return;
+  try{ await navigator.clipboard.writeText(g.link); toast('انتسخ الرابط ✓'); }
+  catch{ toast('ما قدرت أنسخ — انسخه يدوياً: '+g.link); }
+}
+
+/* ===================================================================
    البحث الشامل + ملف العميل 360° — وصول أسرع للمعلومة
 =================================================================== */
 let GS_FILES=null, GS_FILES_T=0;   // كاش ملفات الأرشيف (دقيقة)
@@ -1786,6 +1922,10 @@ function gsResultsHtml(q){
   const clients=store.clients.filter(c=>hit(c.name)||hit(c.company)||hit(c.sector)||String(c.phone||'').includes(q.trim())).slice(0,5);
   h+=gsGroup('العملاء', clients.map(c=>
     gsRow(gsMiniAva(c), esc(c.name), esc([c.company,c.sector].filter(Boolean).join(' · ')), `openClientHub('${c.id}')`)));
+
+  const wgroups=store.wgroups.filter(g=>hit(g.name)||hit(g.note)).slice(0,4);
+  h+=gsGroup('قروبات العمل', wgroups.map(g=>
+    gsRow(GS_IC(g.platform==='telegram'?'✈️':'💬'), esc(g.name), g.platform==='telegram'?'تيليقرام':'واتساب', `sheet.close();openGroupLink('${g.id}')`)));
 
   if(PJ_DATA&&PJ_DATA.connected){
     const projects=(PJ_DATA.projects||[]).filter(p=>hit(p.name)).slice(0,4);
@@ -1905,6 +2045,7 @@ function switchTab(tab){
   if(main){ main.style.display=''; main.classList.remove('vIn'); void main.offsetWidth; main.classList.add('vIn'); }
   window.scrollTo(0,0);
   if(tab==='home') renderHome();
+  else if(tab==='groups') renderGroups();
   else if(tab==='clients') renderClients();
   else if(tab==='proposals'){ propsView='home'; renderProposals(); }
   else { PJ_PROJECT=null; PJ_PERSON=null; PJ_SEARCH=''; renderTasks(); }
@@ -1919,6 +2060,7 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>swit
 
 $('#fab').addEventListener('click', ()=>{
   if(activeTab==='clients') openClientForm();
+  else if(activeTab==='groups') openGroupForm();
   else if(activeTab==='tasks') openTaskForm();
   else if(activeTab==='proposals') openProposalForm();
 });
@@ -1937,6 +2079,7 @@ window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFi
 window.logout=logout; window.openTeam=openTeam;
 window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab; window.showInfluencers=showInfluencers;
 window.openSearch=openSearch; window.openClientHub=openClientHub; window.gsGoProject=gsGoProject; window.gsGoProposals=gsGoProposals; window.pjTaskDetail=pjTaskDetail;
+window.renderGroups=renderGroups; window.grpSet=grpSet; window.openGroupForm=openGroupForm; window.groupMenu=groupMenu; window.openGroupLink=openGroupLink; window.copyGroupLink=copyGroupLink;
 
 loadMe();   // جلب بيانات المستخدم المسجّل (ثم تحديث لوحة الرئيسية بالاسم)
 
@@ -1949,7 +2092,7 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloud.p
 (function(){
   const sp = new URLSearchParams(location.search);
   const t = sp.get('tab');
-  if(t && ['home','clients','proposals','tasks','influencers'].includes(t)) switchTab(t);
+  if(t && ['home','groups','clients','proposals','tasks','influencers'].includes(t)) switchTab(t);
   else switchTab('home');
   if(sp.get('go')==='search') openSearch();
 })();
