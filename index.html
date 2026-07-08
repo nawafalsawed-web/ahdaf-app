@@ -24,22 +24,28 @@
 </head>
 <body>
 
-  <!-- ===== شريط علوي ===== -->
+  <!-- ===== شريط علوي (هيرو) ===== -->
   <header class="topbar">
-    <span class="brand-name">أهداف</span>
-    <div class="topbar-actions">
-      <button class="icon-btn" id="searchToggle" aria-label="بحث">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      </button>
-      <button class="icon-btn" id="settingsBtn" aria-label="إعدادات" onclick="openSettings()">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="11" y2="7"/><line x1="15" y1="7" x2="20" y2="7"/><circle cx="13" cy="7" r="2.1"/><line x1="4" y1="12" x2="7" y2="12"/><line x1="11" y1="12" x2="20" y2="12"/><circle cx="9" cy="12" r="2.1"/><line x1="4" y1="17" x2="13" y2="17"/><line x1="17" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.1"/></svg>
-      </button>
+    <div class="tb-glow"></div>
+    <div class="tb-row">
+      <div class="tb-brand">
+        <span class="brand-name">أهداف</span>
+        <span class="brand-greet" id="greet">أهلاً بك 👋</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="searchToggle" aria-label="بحث">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </button>
+        <button class="icon-btn" id="settingsBtn" aria-label="إعدادات" onclick="openSettings()">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="11" y2="7"/><line x1="15" y1="7" x2="20" y2="7"/><circle cx="13" cy="7" r="2.1"/><line x1="4" y1="12" x2="7" y2="12"/><line x1="11" y1="12" x2="20" y2="12"/><circle cx="9" cy="12" r="2.1"/><line x1="4" y1="17" x2="13" y2="17"/><line x1="17" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.1"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="search-wrap" id="searchWrap" hidden>
+      <span class="sw-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+      <input type="search" id="searchInput" placeholder="ابحث عن عميل أو قطاع…" autocomplete="off">
     </div>
   </header>
-
-  <div class="search-wrap" id="searchWrap" hidden>
-    <input type="search" id="searchInput" placeholder="ابحث عن عميل أو قطاع…" autocomplete="off">
-  </div>
 
   <!-- ===== المحتوى ===== -->
   <main id="view"></main>

@@ -425,6 +425,16 @@ function openClientForm(editId){
 let APP_USER = null;
 async function loadMe(){
   try{ const r = await fetch(bot.url()+'/auth/me', {credentials:'same-origin'}); if(r.ok){ APP_USER = (await r.json()).user; } }catch{}
+  setGreeting();
+}
+// تحية شخصية حسب الوقت + اسم المستخدم
+function setGreeting(){
+  const el = $('#greet'); if(!el) return;
+  const h = new Date().getHours();
+  const g = h<12 ? 'صباح الخير' : h<17 ? 'مساء الخير' : 'مساء الخير';
+  let name = '';
+  if(APP_USER){ name = (APP_USER.name||'').trim().split(/\s+/)[0] || (APP_USER.email||'').split('@')[0]; }
+  el.textContent = name ? `${g}، ${name} 👋` : `${g} 👋`;
 }
 async function logout(){
   try{ await fetch(bot.url()+'/auth/logout', {method:'POST', credentials:'same-origin'}); }catch{}
@@ -1561,7 +1571,8 @@ window.openPropNotify=openPropNotify; window.showArchive=showArchive; window.pro
 window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFile; window.openStoredFile=openStoredFile;
 window.logout=logout; window.openTeam=openTeam;
 
-loadMe();   // جلب بيانات المستخدم المسجّل
+setGreeting();   // تحية فورية حسب الوقت
+loadMe();        // جلب بيانات المستخدم المسجّل (ثم تحديث التحية بالاسم)
 
 // افتح التبويب المطلوب عند الرجوع من قسم المؤثرين (index.html?tab=...)
 (function(){
