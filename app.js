@@ -321,8 +321,8 @@ const GROUP_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" 
 
 // زر المحادثة: يفتح قروب الواتساب إن وُجد رابط، وإلا محادثة مباشرة بالرقم
 function chatButton(c){
-  if(c.groupLink) return `<a class="wa-btn" href="${esc(c.groupLink)}" target="_blank" rel="noopener" aria-label="قروب الواتساب">${GROUP_ICON}</a>`;
-  if(c.phone)     return `<a class="wa-btn" href="${waLink(c)}" target="_blank" rel="noopener" aria-label="محادثة واتساب">${WA_LOGO}</a>`;
+  if(c.groupLink) return `<a class="wa-btn" href="${esc(c.groupLink)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" aria-label="قروب الواتساب">${GROUP_ICON}</a>`;
+  if(c.phone)     return `<a class="wa-btn" href="${waLink(c)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" aria-label="محادثة واتساب">${WA_LOGO}</a>`;
   return '';
 }
 
@@ -333,7 +333,7 @@ function avatarHTML(c){
 function clientCard(c){
   const sub = [c.company, c.phone ? (c.dial||'+966')+' '+c.phone : ''].filter(Boolean).join(' · ') || '';
   return `
-    <div class="client-card">
+    <div class="client-card" onclick="openClientHub('${c.id}')" role="button">
       ${avatarHTML(c)}
       <div class="client-info">
         <div class="client-name">${esc(c.name)}</div>
@@ -341,7 +341,7 @@ function clientCard(c){
       </div>
       <div class="client-actions">
         ${chatButton(c)}
-        <button class="more-btn" onclick="clientMenu('${c.id}')" aria-label="خيارات">
+        <button class="more-btn" onclick="event.stopPropagation();clientMenu('${c.id}')" aria-label="خيارات">
           <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 8a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4z"/></svg>
         </button>
       </div>
@@ -1138,6 +1138,7 @@ async function renderTasks(){
   const view=$('#view');
   if(!PJ_DATA) view.innerHTML = sectionHead('المهام','جاري التحميل من Projecto…') + Array(5).fill('<div class="skel skel-card"></div>').join('');
   try{ const r=await fetch(bot.url()+'/projecto',{credentials:'same-origin'}); PJ_DATA=await r.json(); }catch{}
+  updateTasksBadge();
   paintTasks();
 }
 function paintTasks(){
@@ -1623,6 +1624,7 @@ async function renderHome(){
     try{ const r=await fetch(bot.url()+'/projecto',{credentials:'same-origin'}); PJ_DATA=await r.json(); }catch{ PJ_DATA=PJ_DATA||{}; }
     if(activeTab==='home'){ const v=$('#view'); if(v){ v.innerHTML=homeHtml(); enhanceHome(); } }
   }
+  updateTasksBadge();
 }
 // عدّاد أرقام تصاعدي لبطاقات الرئيسية
 function enhanceHome(){
@@ -1690,7 +1692,7 @@ function homeHtml(){
     h+=`
     <div class="home-sec-head"><h2>عملاؤك</h2><button class="hsh-link" onclick="switchTab('clients')">الكل ›</button></div>
     <div class="strip stag">${clients.slice(0,10).map(c=>`
-      <button class="strip-item" onclick="clientMenu('${c.id}')">
+      <button class="strip-item" onclick="openClientHub('${c.id}')">
         ${c.logo?`<span class="strip-ava img"><img src="${c.logo}" alt=""></span>`
                 :`<span class="strip-ava" style="background:${colorFor(c)}">${esc(initials(c.name))}</span>`}
         <span class="strip-name">${esc((c.name||'').trim())}</span>
@@ -1727,13 +1729,183 @@ function homeQuick(kind){
 }
 
 /* ===================================================================
+   البحث الشامل + ملف العميل 360° — وصول أسرع للمعلومة
+=================================================================== */
+let GS_FILES=null, GS_FILES_T=0;   // كاش ملفات الأرشيف (دقيقة)
+
+// يضمن توفر بيانات Projecto والملفات ثم ينادي callback
+function gsWarm(cb){
+  if(!PJ_DATA) fetch(bot.url()+'/projecto',{credentials:'same-origin'}).then(r=>r.json())
+    .then(d=>{PJ_DATA=d; updateTasksBadge(); cb&&cb();}).catch(()=>{});
+  if(!GS_FILES || Date.now()-GS_FILES_T>60000)
+    fetch(bot.url()+'/files',{credentials:'same-origin'}).then(r=>r.json())
+      .then(d=>{GS_FILES=d.files||[]; GS_FILES_T=Date.now(); cb&&cb();}).catch(()=>{});
+}
+
+function openSearch(){
+  sheet.open(`
+    <div class="gs-box">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="gsInput" type="search" placeholder="ابحث في العملاء والمهام والعروض والملفات…" autocomplete="off">
+    </div>
+    <div id="gsResults">${gsHomeHtml()}</div>
+  `);
+  const inp=$('#gsInput');
+  inp.focus();
+  inp.addEventListener('input', ()=>{ $('#gsResults').innerHTML = inp.value.trim()? gsResultsHtml(inp.value) : gsHomeHtml(); });
+  gsWarm(()=>{ const i=$('#gsInput'); if(i) $('#gsResults').innerHTML = i.value.trim()? gsResultsHtml(i.value) : gsHomeHtml(); });
+}
+
+// صف نتيجة موحّد
+function gsRow(ic,title,sub,onclick,extra){
+  return `<button class="gs-row" onclick="${onclick}">
+    ${ic}
+    <span class="gs-info"><span class="gs-title">${title}</span>${sub?`<span class="gs-sub">${sub}</span>`:''}</span>
+    ${extra||''}
+  </button>`;
+}
+const gsGroup=(label,rows)=>rows.length?`<div class="gs-group">${label}</div>${rows.join('')}`:'';
+function gsMiniAva(c){
+  return c.logo?`<span class="gs-ava img"><img src="${c.logo}" alt=""></span>`
+              :`<span class="gs-ava" style="background:${colorFor(c)}">${esc(initials(c.name))}</span>`;
+}
+const GS_IC = (e)=>`<span class="gs-ic">${e}</span>`;
+
+// الحالة الفارغة: وصول سريع — متأخرات + آخر عملاء + آخر ملفات
+function gsHomeHtml(){
+  const overdue = (PJ_DATA&&PJ_DATA.connected)
+    ? pjAllTasks().filter(t=>!t.done&&t.end&&pjDiffDays(t.end)<0).sort((a,b)=>pjDiffDays(a.end)-pjDiffDays(b.end)).slice(0,3) : [];
+  const clients = store.clients.slice(0,3);
+  const files = (GS_FILES||[]).slice(0,2);
+  let h='';
+  h+=gsGroup('⏰ متأخرات تحتاجك', overdue.map(t=>
+    gsRow(GS_IC('🔥'), esc(t.title), esc(t._proj)+' · متأخرة '+Math.abs(pjDiffDays(t.end))+' يوم', `pjTaskDetail(${t.id})`)));
+  h+=gsGroup('👥 آخر العملاء', clients.map(c=>
+    gsRow(gsMiniAva(c), esc(c.name), esc(c.company||c.sector||''), `openClientHub('${c.id}')`)));
+  h+=gsGroup('📁 آخر الملفات', files.map(f=>
+    gsRow(GS_IC(fileIcon(f.type)), esc(f.name), fmtBytes(f.size), `window.open('${bot.url()}/files/${esc(f.id)}','_blank')`)));
+  return h || `<div class="gs-empty">اكتب أي شي — اسم عميل، مهمة، عرض، أو ملف.</div>`;
+}
+
+function gsResultsHtml(q){
+  const n=pjNorm(q);
+  const hit=s=>pjNorm(s).includes(n);
+  let h='';
+
+  const clients=store.clients.filter(c=>hit(c.name)||hit(c.company)||hit(c.sector)||String(c.phone||'').includes(q.trim())).slice(0,5);
+  h+=gsGroup('العملاء', clients.map(c=>
+    gsRow(gsMiniAva(c), esc(c.name), esc([c.company,c.sector].filter(Boolean).join(' · ')), `openClientHub('${c.id}')`)));
+
+  if(PJ_DATA&&PJ_DATA.connected){
+    const projects=(PJ_DATA.projects||[]).filter(p=>hit(p.name)).slice(0,4);
+    h+=gsGroup('المشاريع', projects.map(p=>{
+      const total=(p.boards||[]).reduce((a,b)=>a+b.tasks.length,0);
+      const done=(p.boards||[]).reduce((a,b)=>a+b.tasks.filter(t=>t.done).length,0);
+      return gsRow(GS_IC('📂'), esc(p.name), `${done}/${total} منجز`, `gsGoProject(${p.id})`,
+        `<span class="gs-pct">${total?Math.round(done/total*100):0}٪</span>`);
+    }));
+    const tasks=pjAllTasks().filter(t=>hit(t.title)).sort((a,b)=>(a.done?1:0)-(b.done?1:0)).slice(0,5);
+    h+=gsGroup('المهام', tasks.map(t=>
+      gsRow(GS_IC(t.done?'✅':'⬜'), esc(t.title), esc(t._proj)+(t._board?' · '+esc(t._board):''), `pjTaskDetail(${t.id})`)));
+  }
+
+  const props=store.proposals.filter(p=>{
+    const c=p.clientId?store.clients.find(x=>x.id===p.clientId):null;
+    return hit(p.title)||(c&&hit(c.name));
+  }).slice(0,4);
+  h+=gsGroup('العروض', props.map(p=>{
+    const c=p.clientId?store.clients.find(x=>x.id===p.clientId):null;
+    return gsRow(GS_IC('📄'), esc(p.title), [c&&c.name,p.stage,fmtSAR(p.value)].filter(Boolean).map(esc).join(' · '), `gsGoProposals()`);
+  }));
+
+  const files=(GS_FILES||[]).filter(f=>hit(f.name)).slice(0,5);
+  h+=gsGroup('الملفات', files.map(f=>
+    gsRow(GS_IC(fileIcon(f.type)), esc(f.name), fmtBytes(f.size)+(f.by?' · '+esc(f.by.split('@')[0]):''), `window.open('${bot.url()}/files/${esc(f.id)}','_blank')`)));
+
+  return h || `<div class="gs-empty">ما لقيت شي عن «${esc(q)}» — جرّب كلمة أقصر.</div>`;
+}
+
+// تنقّل من نتائج البحث
+function gsGoProject(id){
+  sheet.close();
+  activeTab='tasks';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab==='tasks'));
+  const fab=$('#fab'); if(fab) fab.style.display='none';
+  const frame=$('#infFrame'); if(frame) frame.hidden=true;
+  const main=$('#view'); if(main) main.style.display='';
+  window.scrollTo(0,0);
+  PJ_PROJECT=id; PJ_PERSON=null; PJ_SEARCH='';
+  renderTasks();   // paintTasks يفتح المشروع مباشرة لأن PJ_PROJECT مضبوط
+}
+function gsGoProposals(){ sheet.close(); switchTab('proposals'); showArchive(); }
+
+/* ---------- ملف العميل 360° — كل شي عن العميل بنافذة وحدة ---------- */
+function openClientHub(id){
+  const c=store.clients.find(x=>x.id===id); if(!c) return;
+  const nn=pjNorm(c.name);
+  const props=store.proposals.filter(p=>p.clientId===id).slice(0,4);
+  const proj=((PJ_DATA&&PJ_DATA.projects)||[]).find(p=>{const pn=pjNorm(p.name);return pn&&nn&&(pn.includes(nn)||nn.includes(pn));});
+  const files=(GS_FILES||[]).filter(f=>nn&&pjNorm(f.name).includes(nn)).slice(0,4);
+
+  let projHtml='';
+  if(proj){
+    const total=(proj.boards||[]).reduce((a,b)=>a+b.tasks.length,0);
+    const done=(proj.boards||[]).reduce((a,b)=>a+b.tasks.filter(t=>t.done).length,0);
+    const pct=total?Math.round(done/total*100):0;
+    projHtml=`<div class="gs-group">مشروعه في Projecto</div>
+      ${gsRow(GS_IC('📂'), esc(proj.name), `${done}/${total} منجز`, `gsGoProject(${proj.id})`, `<span class="gs-pct">${pct}٪</span>`)}`;
+  }
+
+  sheet.open(`
+    <div class="hub-head">
+      ${avatarHTML(c)}
+      <div class="hub-head-info">
+        <h2>${esc(c.name)}</h2>
+        <p class="sub" style="margin:0">${esc([c.company,c.sector,(c.phone?(c.dial||'+966')+' '+c.phone:'')].filter(Boolean).join(' · '))||'بدون تفاصيل'}</p>
+      </div>
+    </div>
+    <div class="hub-actions">
+      ${c.groupLink?`<a class="hub-act wa" href="${esc(c.groupLink)}" target="_blank" rel="noopener">${GROUP_ICON} القروب</a>`:''}
+      ${c.phone?`<a class="hub-act wa2" href="${waLink(c)}" target="_blank" rel="noopener">${WA_LOGO} محادثة</a>`:''}
+      <button class="hub-act" onclick="sheet.close();openClientForm('${c.id}')">✏️ تعديل</button>
+      <button class="hub-act" onclick="clientMenu('${c.id}')">⋯ المزيد</button>
+    </div>
+    ${gsGroup('عروضه'+(props.length?` (${props.length})`:''), props.map(p=>
+      gsRow(GS_IC('📄'), esc(p.title), [p.stage,fmtSAR(p.value)].filter(Boolean).map(esc).join(' · '), `gsGoProposals()`)))
+      || `<div class="gs-group">عروضه</div><div class="gs-empty small">ما فيه عروض لهذا العميل — <a onclick="sheet.close();switchTab('proposals');openProposalForm()" style="color:var(--purple);font-weight:600;cursor:pointer">أنشئ عرضاً</a></div>`}
+    ${projHtml}
+    ${gsGroup('ملفات باسمه', files.map(f=>
+      gsRow(GS_IC(fileIcon(f.type)), esc(f.name), fmtBytes(f.size), `window.open('${bot.url()}/files/${esc(f.id)}','_blank')`)))}
+    <button class="btn-ghost" onclick="sheet.close()">إغلاق</button>
+  `);
+  gsWarm(()=>{ /* لو وصلت بيانات جديدة والملف لسه مفتوح، حدّثه */ if($('.hub-head')) openClientHub(id); });
+}
+
+/* ---------- شارة المتأخرات على تبويب المهام ---------- */
+function updateTasksBadge(){
+  const tab=document.querySelector('.tab[data-tab="tasks"]'); if(!tab) return;
+  const num=(PJ_DATA&&PJ_DATA.connected)?pjAllTasks().filter(t=>!t.done&&t.end&&pjDiffDays(t.end)<0).length:0;
+  let b=tab.querySelector('.tab-badge');
+  if(!num){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement('span'); b.className='tab-badge'; tab.appendChild(b); }
+  b.textContent=num>99?'99+':num;
+}
+
+/* ---------- اختصارات لوحة المفاتيح ---------- */
+document.addEventListener('keydown',e=>{
+  const typing=/input|textarea|select/i.test((document.activeElement||{}).tagName||'');
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); openSearch(); }
+  else if(e.key==='/' && !typing){ e.preventDefault(); openSearch(); }
+  else if(e.key==='Escape' && !$('#sheet').hidden) sheet.close();
+});
+
+/* ===================================================================
    التنقل
 =================================================================== */
 let activeTab='home';
 function switchTab(tab){
   activeTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
-  $('#searchWrap').hidden=true; $('#searchToggle').style.visibility = tab==='clients'?'visible':'hidden';
   const fab=$('#fab'); if(fab) fab.style.display = (tab==='tasks'||tab==='home'||tab==='influencers') ? 'none' : '';
   const main=$('#view'), frame=$('#infFrame');
   // قسم المؤثرين مدمج عبر iframe مِلء الشاشة داخل هيكل التطبيق
@@ -1760,13 +1932,8 @@ $('#fab').addEventListener('click', ()=>{
   else if(activeTab==='proposals') openProposalForm();
 });
 
-// البحث
-$('#searchToggle').addEventListener('click', ()=>{
-  const w=$('#searchWrap'); w.hidden=!w.hidden;
-  if(!w.hidden) $('#searchInput').focus();
-  else { currentSearch=''; $('#searchInput').value=''; renderClients(); }
-});
-$('#searchInput').addEventListener('input', e=>{ currentSearch=e.target.value; renderClients(); });
+// البحث الشامل — من أي تبويب
+$('#searchToggle').addEventListener('click', openSearch);
 
 /* ---------- تشغيل ---------- */
 window.openClientForm=openClientForm; window.clientMenu=clientMenu;
@@ -1778,6 +1945,7 @@ window.openPropNotify=openPropNotify; window.showArchive=showArchive; window.pro
 window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFile; window.openStoredFile=openStoredFile;
 window.logout=logout; window.openTeam=openTeam;
 window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab; window.showInfluencers=showInfluencers;
+window.openSearch=openSearch; window.openClientHub=openClientHub; window.gsGoProject=gsGoProject; window.gsGoProposals=gsGoProposals; window.pjTaskDetail=pjTaskDetail;
 
 loadMe();   // جلب بيانات المستخدم المسجّل (ثم تحديث لوحة الرئيسية بالاسم)
 
@@ -1786,11 +1954,13 @@ cloud.pull();
 setInterval(()=>cloud.pull(), 90000);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloud.pull(); });
 
-// افتح التبويب المطلوب (index.html?tab=...) أو الرئيسية افتراضياً
+// افتح التبويب المطلوب (index.html?tab=...) أو الرئيسية افتراضياً — و?go=search يفتح البحث الشامل
 (function(){
-  const t = new URLSearchParams(location.search).get('tab');
+  const sp = new URLSearchParams(location.search);
+  const t = sp.get('tab');
   if(t && ['home','clients','proposals','tasks','influencers'].includes(t)) switchTab(t);
   else switchTab('home');
+  if(sp.get('go')==='search') openSearch();
 })();
 
 // أثناء التطوير: ألغِ أي service worker قديم وامسح الكاش (يمنع النسخ العالقة)
