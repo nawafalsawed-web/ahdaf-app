@@ -281,6 +281,28 @@ app.post('/files/remove', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ===================== مزامنة بيانات التطبيق (عملاء + عروض، مشتركة للفريق) =====================
+// نقطة مركزية بسيطة: التطبيق يسحب/يدفع كامل البيانات مع رقم مراجعة (rev) لكشف التعارض.
+const DATA_FILE = path.join(FILES_DIR, '_appdata.json');
+const loadAppData = () => { try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return { rev: 0, data: null }; } };
+const saveAppData = d => fs.writeFileSync(DATA_FILE, JSON.stringify(d));
+
+app.get('/data', requireAuth, (req, res) => res.json({ ok: true, ...loadAppData() }));
+
+app.post('/data', requireAuth, (req, res) => {
+  const { baseRev, data } = req.body || {};
+  if (!data || typeof data !== 'object') return res.status(400).json({ ok: false, error: 'بيانات ناقصة' });
+  const cur = loadAppData();
+  // لو حد ثاني دفع نسخة أحدث، رجّعها للجهاز عشان يدمج ويعيد المحاولة
+  if (cur.rev && Number(baseRev) !== cur.rev) return res.status(409).json({ ok: false, conflict: true, rev: cur.rev, data: cur.data });
+  const next = {
+    rev: (cur.rev || 0) + 1, updatedAt: Date.now(), updatedBy: req.user.email,
+    data: { clients: data.clients || [], proposals: data.proposals || [], tombstones: (data.tombstones || []).slice(0, 300) },
+  };
+  try { saveAppData(next); } catch (e) { return res.status(500).json({ ok: false, error: e.message }); }
+  res.json({ ok: true, rev: next.rev });
+});
+
 // ===================== مزامنة Projecto (مشاريع + مهام) =====================
 // GET: بيانات المشاريع والمهام المخزّنة (تُحدَّث تلقائياً في الخلفية)
 app.get('/projecto', requireAuth, (req, res) => {

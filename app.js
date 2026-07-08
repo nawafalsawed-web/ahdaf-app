@@ -11,14 +11,14 @@ const DIAL_CODES = ['+966','+971','+973','+974','+965','+968','+20','+962','+90'
 /* ---------- طبقة التخزين ---------- */
 const store = {
   read(){
-    try{ const d = JSON.parse(localStorage.getItem(DB_KEY)) || {}; return {clients:d.clients||[], settings:d.settings||{}, tasks:d.tasks||[], proposals:d.proposals||[], files:d.files||[]}; }
-    catch{ return {clients:[],settings:{},tasks:[],proposals:[],files:[]}; }
+    try{ const d = JSON.parse(localStorage.getItem(DB_KEY)) || {}; return {clients:d.clients||[], settings:d.settings||{}, tasks:d.tasks||[], proposals:d.proposals||[], files:d.files||[], tombstones:d.tombstones||[]}; }
+    catch{ return {clients:[],settings:{},tasks:[],proposals:[],files:[],tombstones:[]}; }
   },
   write(data){ localStorage.setItem(DB_KEY, JSON.stringify(data)); },
   get clients(){ return this.read().clients; },
-  addClient(c){ const d=this.read(); d.clients.unshift(c); this.write(d); },
-  updateClient(id, patch){ const d=this.read(); const i=d.clients.findIndex(x=>x.id===id); if(i>-1){d.clients[i]={...d.clients[i],...patch}; this.write(d);} },
-  removeClient(id){ const d=this.read(); d.clients=d.clients.filter(x=>x.id!==id); this.write(d); },
+  addClient(c){ const d=this.read(); d.clients.unshift({...c,_ts:Date.now()}); this.write(d); cloud.queue(); },
+  updateClient(id, patch){ const d=this.read(); const i=d.clients.findIndex(x=>x.id===id); if(i>-1){d.clients[i]={...d.clients[i],...patch,_ts:Date.now()}; this.write(d); cloud.queue();} },
+  removeClient(id){ const d=this.read(); d.clients=d.clients.filter(x=>x.id!==id); d.tombstones.unshift({id,ts:Date.now()}); this.write(d); cloud.queue(); },
   get settings(){ return this.read().settings || {}; },
   setSettings(s){ const d=this.read(); d.settings={...(d.settings||{}), ...s}; this.write(d); },
   get tasks(){ return this.read().tasks; },
@@ -26,9 +26,9 @@ const store = {
   updateTask(id, patch){ const d=this.read(); const i=d.tasks.findIndex(x=>x.id===id); if(i>-1){d.tasks[i]={...d.tasks[i],...patch}; this.write(d);} },
   removeTask(id){ const d=this.read(); d.tasks=d.tasks.filter(x=>x.id!==id); this.write(d); },
   get proposals(){ return this.read().proposals; },
-  addProposal(p){ const d=this.read(); d.proposals.unshift(p); this.write(d); },
-  updateProposal(id, patch){ const d=this.read(); const i=d.proposals.findIndex(x=>x.id===id); if(i>-1){d.proposals[i]={...d.proposals[i],...patch}; this.write(d);} },
-  removeProposal(id){ const d=this.read(); d.proposals=d.proposals.filter(x=>x.id!==id); this.write(d); },
+  addProposal(p){ const d=this.read(); d.proposals.unshift({...p,_ts:Date.now()}); this.write(d); cloud.queue(); },
+  updateProposal(id, patch){ const d=this.read(); const i=d.proposals.findIndex(x=>x.id===id); if(i>-1){d.proposals[i]={...d.proposals[i],...patch,_ts:Date.now()}; this.write(d); cloud.queue();} },
+  removeProposal(id){ const d=this.read(); d.proposals=d.proposals.filter(x=>x.id!==id); d.tombstones.unshift({id,ts:Date.now()}); this.write(d); cloud.queue(); },
   get files(){ return this.read().files; },
   addFile(f){ const d=this.read(); d.files.unshift(f); this.write(d); },
   removeFile(id){ const d=this.read(); d.files=d.files.filter(x=>x.id!==id); this.write(d); },
@@ -78,6 +78,78 @@ function botErrMsg(e){
   return /Failed to fetch|NetworkError|load failed|ERR_/i.test(e.message||'')
     ? 'ما قدرت أوصل للبوت. تأكد إنه شغّال (npm start) ومربوط، والرابط صح في الإعدادات ⚙️'
     : (e.message || 'خطأ غير متوقع');
+}
+
+/* ---------- مزامنة سحابية (العملاء + العروض مشتركة بين أجهزة الفريق) ----------
+   السيرفر يحفظ نسخة واحدة برقم مراجعة (rev). كل جهاز يسحب عند الفتح وكل ٩٠ ثانية،
+   ويدفع تعديلاته بعد ثانية من آخر تغيير. الدمج بالأحدث: طابع _ts لكل عنصر يحسم،
+   وشواهد الحذف (tombstones) تضمن إن المحذوف من جهاز ينحذف من الكل. */
+const cloud = {
+  REV_KEY:'ahdaf_sync_rev',
+  rev(){ return +(localStorage.getItem(this.REV_KEY)||0); },
+  setRev(r){ localStorage.setItem(this.REV_KEY, String(r)); },
+  lastSync:0, _timer:null, _busy:false, _again:false,
+  payload(){ const d=store.read(); return {clients:d.clients, proposals:d.proposals, tombstones:(d.tombstones||[]).slice(0,300)}; },
+  merge(remote){
+    const d = store.read();
+    const tombs = new Map();
+    [...(d.tombstones||[]), ...(remote.tombstones||[])].forEach(t=>{ if(!tombs.has(t.id)||t.ts>tombs.get(t.id)) tombs.set(t.id,t.ts); });
+    const mergeList = (loc, rem) => {
+      const by = new Map();
+      [...rem, ...loc].forEach(it=>{ const ex=by.get(it.id); if(!ex || (it._ts||0)>(ex._ts||0)) by.set(it.id,it); });
+      return [...by.values()]
+        .filter(it=>!(tombs.has(it.id) && tombs.get(it.id)>=(it._ts||0)))
+        .sort((a,b)=>(b._ts||0)-(a._ts||0));
+    };
+    d.clients = mergeList(d.clients, remote.clients||[]);
+    d.proposals = mergeList(d.proposals, remote.proposals||[]);
+    d.tombstones = [...tombs].map(([id,ts])=>({id,ts})).sort((a,b)=>b.ts-a.ts).slice(0,300);
+    store.write(d);
+  },
+  async pull(){
+    try{
+      const r = await fetch(bot.url()+'/data', {cache:'no-store'});
+      if(!r.ok) return;
+      const d = await r.json();
+      if(!d.ok) return;
+      if(!d.rev || !d.data){
+        // السيرفر لسه فاضي — ارفع بياناتنا المحلية لو فيه شي
+        const p=this.payload(); if(p.clients.length||p.proposals.length) this.queue(200);
+        this.lastSync=Date.now(); return;
+      }
+      if(d.rev === this.rev()){ this.lastSync=Date.now(); return; }
+      const before = JSON.stringify(this.payload());
+      this.merge(d.data);
+      this.setRev(d.rev);
+      this.lastSync = Date.now();
+      const after = JSON.stringify(this.payload());
+      if(after !== before) cloudRender();
+      // لو الدمج طلّع عناصر محلية ما هي عند السيرفر، ادفعها
+      if(after !== JSON.stringify({clients:d.data.clients||[], proposals:d.data.proposals||[], tombstones:(d.data.tombstones||[]).slice(0,300)})) this.queue(300);
+    }catch{}
+  },
+  queue(ms=1200){ clearTimeout(this._timer); this._timer=setTimeout(()=>this.push(), ms); },
+  async push(){
+    if(this._busy){ this._again=true; return; }
+    this._busy = true;
+    try{
+      const r = await fetch(bot.url()+'/data', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ baseRev:this.rev(), data:this.payload() })
+      });
+      const d = await r.json().catch(()=>({}));
+      if(r.status===409 && d.data){ this.merge(d.data); this.setRev(d.rev); cloudRender(); this._again=true; }
+      else if(d.ok){ this.setRev(d.rev); this.lastSync=Date.now(); }
+    }catch{}
+    this._busy = false;
+    if(this._again){ this._again=false; this.queue(300); }
+  },
+};
+// يعيد رسم التبويب الحالي بعد وصول بيانات جديدة من المزامنة
+function cloudRender(){
+  if(activeTab==='home') renderHome();
+  else if(activeTab==='clients') renderClients();
+  else if(activeTab==='proposals') renderProposals();
 }
 
 /* ---------- تخزين الملفات (IndexedDB) ---------- */
@@ -509,6 +581,7 @@ function openSettings(){
 
     <div style="border-top:1px solid var(--line);margin-top:20px;padding-top:16px">
       ${APP_USER?`<p class="sub" style="margin-bottom:12px">مسجّل: <b>${esc(APP_USER.email)}</b>${APP_USER.admin?' · مشرف':''}</p>`:''}
+      <p class="sub" style="margin-bottom:12px">☁️ العملاء والعروض تتزامن تلقائياً بين أجهزة الفريق${cloud.lastSync?` · آخر مزامنة ${new Date(cloud.lastSync).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}`:''}</p>
       ${APP_USER&&APP_USER.admin?`<button class="btn-soft" style="width:100%;margin-bottom:8px;padding:12px" onclick="openTeam()">👥 إدارة الفريق والدخول</button>`:''}
       <button class="btn-danger" onclick="logout()">تسجيل الخروج</button>
     </div>
@@ -1672,6 +1745,11 @@ window.logout=logout; window.openTeam=openTeam;
 window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab; window.showInfluencers=showInfluencers;
 
 loadMe();   // جلب بيانات المستخدم المسجّل (ثم تحديث لوحة الرئيسية بالاسم)
+
+// مزامنة البيانات: عند الفتح، وكل ٩٠ ثانية، وعند الرجوع للتبويب
+cloud.pull();
+setInterval(()=>cloud.pull(), 90000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloud.pull(); });
 
 // افتح التبويب المطلوب (index.html?tab=...) أو الرئيسية افتراضياً
 (function(){
