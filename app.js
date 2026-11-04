@@ -2031,13 +2031,206 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ===================================================================
+   السوشال — نشر وجدولة وتراكر حسابات أهداف (عبر البوت ← Ayrshare)
+=================================================================== */
+const SO_PLAT = {
+  instagram:{n:'انستقرام',c:'#E1306C'}, tiktok:{n:'تيك توك',c:'#111111'}, snapchat:{n:'سناب',c:'#E6C800'},
+  twitter:{n:'إكس',c:'#000000'}, linkedin:{n:'لينكدإن',c:'#0A66C2'}, youtube:{n:'يوتيوب',c:'#FF0000'},
+  facebook:{n:'فيسبوك',c:'#1877F2'}, threads:{n:'ثريدز',c:'#333333'},
+};
+let SO = {status:null, stats:null, history:null}, soSeg='scheduled';
+async function soApi(p, opts){
+  const r = await fetch(bot.url()+p, {cache:'no-store', credentials:'same-origin', ...opts});
+  const d = await r.json().catch(()=>({ok:false,error:'رد غير صالح'}));
+  if(!r.ok || !d.ok) throw new Error(d.error || 'فشل الطلب');
+  return d;
+}
+const soPost = (p, body) => soApi(p, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{})});
+// ponytail: الأرقام تختلف أسماؤها بين المنصات، نلقط أول حقل متابعين/مشتركين رقمي
+function soFollowers(a){
+  if(!a) return null;
+  for(const k of ['followersCount','followerCount','subscriberCount','followers']) if(typeof a[k]==='number') return a[k];
+  const k = Object.keys(a).find(k=>/follow|subscri/i.test(k) && typeof a[k]==='number');
+  return k ? a[k] : null;
+}
+const soNum = n => n==null ? '—' : n>=1e6 ? (n/1e6).toFixed(1)+'M' : n>=1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+const soChip = p => `<span class="so-chip" style="--pc:${(SO_PLAT[p]||{}).c||'#666'}">${(SO_PLAT[p]||{}).n||p}</span>`;
+
+async function renderSocial(force){
+  const view=$('#view');
+  const head = sectionHead('السوشال', 'كل حسابات أهداف: نشر، جدولة، وأرقام', SO.status&&SO.status.connected?`<button class="sh-action" onclick="openComposer()">＋ منشور جديد</button>`:'');
+  if(!SO.status || force){
+    view.innerHTML = head + `<div class="skel" style="height:120px;border-radius:18px"></div>`;
+    try{ SO.status = await soApi('/social/status'); }
+    catch(e){ view.innerHTML = head + `<div class="empty"><span class="emoji">⚠️</span><h3>تعذّر الاتصال</h3><p>${esc(botErrMsg(e))}</p><button class="cta" onclick="renderSocial(true)">إعادة المحاولة</button></div>`; return; }
+    if(activeTab!=='social') return;
+  }
+  if(!SO.status.connected){
+    view.innerHTML = sectionHead('السوشال','') + `<div class="empty"><span class="emoji">📲</span><h3>الحسابات مو مربوطة بعد</h3>
+      <p>اشترك في Ayrshare واربط حسابات أهداف من لوحتهم (انستقرام، تيك توك، سناب، يوتيوب، لينكدإن، إكس)، وبعدين حط المفتاح هنا.</p>
+      ${APP_USER&&APP_USER.admin?`<button class="cta" onclick="openSocialConnect()">ربط المفتاح</button>`:'<p class="small">الربط من المشرف.</p>'}</div>`;
+    return;
+  }
+  const acc = SO.status.accounts||[], an = (SO.stats&&SO.stats.analytics)||{};
+  const cards = acc.filter(a=>SO_PLAT[a.platform]).map(a=>`
+    <a class="so-acc" href="${esc(a.profileUrl||'#')}" target="_blank" rel="noopener" style="--pc:${SO_PLAT[a.platform].c}">
+      ${a.userImage?`<img src="${esc(a.userImage)}" alt="" loading="lazy">`:'<span class="so-ph"></span>'}
+      <div><div class="so-n">${esc(SO_PLAT[a.platform].n)}</div><div class="so-h">@${esc(a.username||a.displayName||'')}</div></div>
+      <div class="so-f"><b>${soNum(soFollowers(an[a.platform]&&an[a.platform].analytics))}</b><span>متابع</span></div>
+    </a>`).join('');
+  const hist = SO.history||[];
+  const bucket = p => p.status==='error'?'error' : (p.status==='pending'||p.status==='scheduled'||p.status==='processing'||p.status==='awaiting approval')?'scheduled':'done';
+  const list = hist.filter(p=>bucket(p)===soSeg);
+  const cnt = k => hist.filter(p=>bucket(p)===k).length;
+  const seg = (k,l)=>`<button class="pj-seg ${soSeg===k?'on':''}" onclick="soSetSeg('${k}')">${l} <span class="seg-count" style="margin-inline-start:4px">${cnt(k)}</span></button>`;
+  const when = p => { const d=new Date(p.scheduleDate||p.created); return isNaN(d)?'':d.toLocaleString('ar-SA-u-nu-latn',{dateStyle:'medium',timeStyle:'short'}); };
+  const row = p => `<div class="so-post">
+      ${(p.mediaUrls&&p.mediaUrls[0])?`<div class="so-thumb">${/\.(mp4|mov|webm)/i.test(p.mediaUrls[0])?'🎬':`<img src="${esc(p.mediaUrls[0])}" alt="" loading="lazy">`}</div>`:''}
+      <div class="so-body">
+        <div class="so-text">${esc((p.post||'').slice(0,160))||'<i>بدون نص</i>'}</div>
+        <div class="so-meta">${(p.platforms||[]).map(soChip).join('')} <span>${when(p)}</span></div>
+        ${(p.postIds||[]).filter(x=>x.postUrl).map(x=>`<a class="so-link" href="${esc(x.postUrl)}" target="_blank" rel="noopener">فتح في ${(SO_PLAT[x.platform]||{}).n||x.platform} ↗</a>`).join(' ')}
+        ${(p.errors||[]).map(e=>`<div class="so-err">${esc((e.platform||'')+': '+(e.message||''))}</div>`).join('')}
+      </div>
+      ${bucket(p)==='scheduled'?`<button class="more-btn" onclick="soDelete('${esc(p.id)}')" aria-label="إلغاء">✕</button>`:''}
+    </div>`;
+  view.innerHTML = head + `
+    <div class="so-accs stag">${cards || '<p class="small">ما فيه حسابات مربوطة في Ayrshare.</p>'}</div>
+    ${SO.stats?`<div class="small so-upd">آخر تحديث للأرقام: ${new Date(SO.stats.ts).toLocaleTimeString('ar-SA-u-nu-latn',{timeStyle:'short'})} · <a onclick="soRefresh()">تحديث</a>${APP_USER&&APP_USER.admin?` · <a onclick="openSocialConnect()">المفاتيح</a>`:''}</div>`:''}
+    <div class="pj-segs">${seg('scheduled','مجدول')}${seg('done','منشور')}${seg('error','فشل')}</div>
+    ${SO.history==null?'<div class="skel" style="height:80px;border-radius:14px"></div>' : list.length?`<div class="card-list">${list.map(row).join('')}</div>`:`<div class="empty small"><p>ما فيه شي هنا.</p></div>`}`;
+  if(!SO.stats) soApi('/social/stats').then(d=>{SO.stats=d; activeTab==='social'&&renderSocial();}).catch(e=>toast(e.message));
+  if(SO.history==null) soApi('/social/history').then(d=>{SO.history=d.history; activeTab==='social'&&renderSocial();}).catch(e=>{SO.history=[]; toast(e.message);});
+}
+function soSetSeg(k){ soSeg=k; renderSocial(); }
+function soRefresh(){ SO.history=null; soApi('/social/stats?force=1').then(d=>{SO.stats=d; renderSocial();}).catch(e=>toast(e.message)); renderSocial(); }
+async function soDelete(id){
+  if(!confirm('تلغي هذا المنشور المجدول؟')) return;
+  try{ await soPost('/social/delete',{id}); toast('انلغى ✓'); SO.history=null; renderSocial(); }catch(e){ toast(e.message); }
+}
+
+function openComposer(){
+  const active=(SO.status&&SO.status.active||[]).filter(p=>SO_PLAT[p]);
+  sheet.open(`
+    <h2>منشور جديد</h2>
+    <p class="sub">اكتب مرة وحدة وانشر على كل الحسابات اللي تختارها.</p>
+    <div class="field"><label>المنصات</label><div class="prio-row" style="flex-wrap:wrap">
+      ${active.map(p=>`<button class="prio-chip on" style="--pc:${SO_PLAT[p].c}" data-sp="${p}">${SO_PLAT[p].n}</button>`).join('')}
+    </div></div>
+    <div class="field"><label>النص</label><textarea id="so_text" rows="5" placeholder="الكابشن…"></textarea><div class="small" id="so_len">0</div></div>
+    <div class="field" id="so_ytw" ${active.includes('youtube')?'':'hidden'}><label>عنوان يوتيوب</label><input id="so_yt" maxlength="100" autocomplete="off"></div>
+    <div class="field"><label>صور أو فيديو</label><input type="file" id="so_files" accept="image/*,video/*" multiple></div>
+    <div class="field"><label>وقت النشر (فاضي = الحين)</label><input type="datetime-local" id="so_when" dir="ltr"></div>
+    <div class="small">تيك توك وسناب ويوتيوب تحتاج فيديو أو صورة، وسناب يقبل ملف واحد بس.</div>
+    <button class="btn-primary" id="so_go">نشر</button>
+    <button class="btn-ghost" onclick="sheet.close()">إلغاء</button>`);
+  const picked=()=>[...document.querySelectorAll('[data-sp].on')].map(b=>b.dataset.sp);
+  document.querySelectorAll('[data-sp]').forEach(b=>b.addEventListener('click',()=>{ b.classList.toggle('on'); $('#so_ytw').hidden=!picked().includes('youtube'); }));
+  $('#so_text').addEventListener('input',e=>{ $('#so_len').textContent=e.target.value.length; });
+  $('#so_when').addEventListener('change',e=>{ $('#so_go').textContent=e.target.value?'جدولة':'نشر'; });
+  $('#so_go').addEventListener('click', async ()=>{
+    const platforms=picked(), text=$('#so_text').value.trim(), files=[...$('#so_files').files], when=$('#so_when').value;
+    if(!platforms.length) return toast('اختر منصة');
+    if(!text && !files.length) return toast('اكتب نص أو أرفق ملف');
+    if(when && new Date(when)<new Date()) return toast('الوقت لازم يكون بالمستقبل');
+    const btn=$('#so_go'); btn.disabled=true;
+    try{
+      const mediaUrls=[];
+      for(const [i,f] of files.entries()){
+        btn.textContent=`رفع ${i+1}/${files.length}…`;
+        const r=await fetch(bot.url()+'/social/media',{method:'POST',credentials:'same-origin',headers:{'Content-Type':f.type||'application/octet-stream'},body:f});
+        const d=await r.json().catch(()=>({})); if(!r.ok||!d.ok) throw new Error(d.error||'فشل رفع '+f.name);
+        mediaUrls.push(d.url);
+      }
+      btn.textContent='إرسال…';
+      const d=await soPost('/social/post',{text, platforms, mediaUrls, scheduleDate: when?new Date(when).toISOString():'', youtubeTitle:$('#so_yt').value.trim()});
+      toast(d.result&&d.result.status==='scheduled'?'تمت الجدولة ✓':'انتشر ✓');
+      sheet.close(); soSeg=when?'scheduled':'done'; SO.history=null; renderSocial();
+    }catch(e){ toast(botErrMsg(e)); btn.disabled=false; btn.textContent=when?'جدولة':'نشر'; }
+  });
+}
+
+function openSocialConnect(){
+  sheet.open(`
+    <h2>مفاتيح السوشال</h2>
+    <p class="sub">من لوحة Ayrshare ← API Key. المفاتيح تنحفظ على السيرفر بس.</p>
+    <div class="field"><label>Ayrshare API Key</label><input id="sc_key" dir="ltr" autocomplete="off" placeholder="${SO.status&&SO.status.connected?'محفوظ — اتركه فاضي لو ما تبي تغيّره':''}"></div>
+    <div class="field"><label>إكس: Consumer Key (اختياري)</label><input id="sc_xk" dir="ltr" autocomplete="off"></div>
+    <div class="field"><label>إكس: Consumer Secret</label><input id="sc_xs" dir="ltr" autocomplete="off"></div>
+    <div class="small">إكس يطلب مفاتيح مطوّر خاصة فيك من developer.x.com، بدونها ما ينشر على إكس وباقي المنصات تشتغل عادي.</div>
+    <button class="btn-primary" id="sc_save">حفظ وتحقّق</button>
+    <button class="btn-ghost" onclick="sheet.close()">إلغاء</button>`);
+  $('#sc_save').addEventListener('click', async ()=>{
+    try{ await soPost('/social/connect',{apiKey:$('#sc_key').value, xKey:$('#sc_xk').value, xSecret:$('#sc_xs').value});
+      toast('انربط ✓'); sheet.close(); SO={status:null,stats:null,history:null}; renderSocial(); }
+    catch(e){ toast(botErrMsg(e)); }
+  });
+}
+
+/* ===================================================================
+   قسم: المناقصات — بوابات الموردين (tenders.json يولّده bot/tenders.py)
+=================================================================== */
+const TN_PORTALS = {
+  etimad:{name:'اعتماد', short:'اعتماد', color:'#0E7C66', url:'https://portal.etimad.sa'},
+  forsah:{name:'فرصة', short:'فرصة', color:'#E08A00', url:'https://www.forsah.sa'},
+  ariba: {name:'ساب أريبا', short:'أريبا', color:'#0A6ED1', url:'https://service.ariba.com/Supplier.aw'},
+  oracle:{name:'أوراكل · أفق', short:'أوراكل', color:'#C74634', url:'https://iadmkf.fa.ocs.oraclecloud.com/fscmUI/faces/FuseWelcome'},
+};
+const TN_STATUS = {ok:'متصلة', error:'تعطّل السحب', pending:'بانتظار الربط'};
+let TN = null, tnFit = true, tnPortal = '';
+
+async function renderTenders(){
+  if(!TN){
+    $('#view').innerHTML = sectionHead('المناقصات','جاري التحميل…','') + `<div class="skel skel-card"></div><div class="skel skel-card"></div>`;
+    try{ TN = await fetch('tenders.json?'+Date.now()).then(r=>r.json()); }
+    catch(e){ TN = {portals:[], tenders:[]}; }
+    if(activeTab!=='tenders') return;
+  }
+  const all = TN.tenders||[];
+  const list = all.filter(t=>(!tnFit||t.fit) && (!tnPortal||t.portal===tnPortal));
+  const fitN = all.filter(t=>!tnPortal||t.portal===tnPortal).filter(t=>t.fit).length;
+  const portals = Object.keys(TN_PORTALS).map(id=>{
+    const p = (TN.portals||[]).find(x=>x.id===id) || {status:'pending'}, d = TN_PORTALS[id];
+    return `<button class="tn-portal ${tnPortal===id?'on':''}" style="--pc:${d.color}" onclick="tnSetPortal('${id}')">
+      <b>${d.name}</b>
+      <span class="tn-st tn-${p.status}">${TN_STATUS[p.status]||p.status}${p.status==='ok'?` · ${p.count||0}`:''}</span>
+    </button>`;
+  }).join('');
+  const seg=(v,label,n)=>`<button class="pj-seg ${tnFit===v?'on':''}" onclick="tnSetFit(${v})">${label} <span class="seg-count" style="margin-inline-start:4px">${n}</span></button>`;
+  const body = list.length ? `<div class="card-list stag">${list.map(tenderCard).join('')}</div>`
+    : `<div class="empty"><span class="emoji">📭</span><h3>ما فيه مناقصات هنا</h3><p>${tnPortal&&!(TN.portals||[]).some(p=>p.id===tnPortal&&p.status==='ok')?'البوابة لسا ما انربطت.':'ما فيه مناقصات مفتوحة تطابق الفلتر.'}</p></div>`;
+  const upd = TN.updated ? 'آخر تحديث '+new Date(TN.updated).toLocaleString('ar-SA-u-nu-latn',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}) : 'ما تحدّثت بعد';
+  $('#view').innerHTML = sectionHead('المناقصات', `${all.length} مناقصة مفتوحة · ${upd}`, '') + `
+    <div class="tn-portals">${portals}</div>
+    <div class="pj-segs">${seg(true,'تناسبنا',fitN)}${seg(false,'الكل',all.filter(t=>!tnPortal||t.portal===tnPortal).length)}</div>
+    ${body}`;
+}
+function tnSetFit(v){ tnFit=v; renderTenders(); }
+function tnSetPortal(id){ tnPortal = tnPortal===id ? '' : id; renderTenders(); }
+
+function tenderCard(t){
+  const d = TN_PORTALS[t.portal]||{name:t.portal,color:'#666'};
+  const days = Math.ceil((new Date(t.due+'+03:00') - Date.now())/864e5);
+  const due = days<=0 ? 'ينتهي اليوم' : days===1 ? 'باقي يوم' : `باقي ${days} يوم`;
+  return `
+    <a class="client-card tn-card" href="${esc(t.url)}" target="_blank" rel="noopener">
+      <div class="avatar" style="background:${d.color};font-size:11px">${d.short||d.name}</div>
+      <div class="client-info">
+        <div class="client-name">${esc(t.title)}</div>
+        <div class="client-meta">${esc(t.agency)}${t.type?' · '+esc(t.type):''}</div>
+      </div>
+      <span class="tn-due ${days<=3?'hot':''}">${due}</span>
+    </a>`;
+}
+
+/* ===================================================================
    التنقل
 =================================================================== */
 let activeTab='home';
 function switchTab(tab){
   activeTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
-  const fab=$('#fab'); if(fab) fab.style.display = (tab==='tasks'||tab==='home'||tab==='influencers') ? 'none' : '';
+  const fab=$('#fab'); if(fab) fab.style.display = (tab==='tasks'||tab==='home'||tab==='influencers'||tab==='social'||tab==='tenders') ? 'none' : '';
   const main=$('#view'), frame=$('#infFrame');
   // قسم المؤثرين مدمج عبر iframe مِلء الشاشة داخل هيكل التطبيق
   if(tab==='influencers'){ if(main) main.style.display='none'; showInfluencers(); return; }
@@ -2046,6 +2239,8 @@ function switchTab(tab){
   window.scrollTo(0,0);
   if(tab==='home') renderHome();
   else if(tab==='groups') renderGroups();
+  else if(tab==='social') renderSocial();
+  else if(tab==='tenders') renderTenders();
   else if(tab==='clients') renderClients();
   else if(tab==='proposals'){ propsView='home'; renderProposals(); }
   else { PJ_PROJECT=null; PJ_PERSON=null; PJ_SEARCH=''; renderTasks(); }
@@ -2079,6 +2274,8 @@ window.pickArchiveFile=pickArchiveFile; window.deleteArchiveFile=deleteArchiveFi
 window.logout=logout; window.openTeam=openTeam;
 window.renderHome=renderHome; window.homeQuick=homeQuick; window.switchTab=switchTab; window.showInfluencers=showInfluencers;
 window.openSearch=openSearch; window.openClientHub=openClientHub; window.gsGoProject=gsGoProject; window.gsGoProposals=gsGoProposals; window.pjTaskDetail=pjTaskDetail;
+window.renderSocial=renderSocial; window.soSetSeg=soSetSeg; window.soRefresh=soRefresh; window.soDelete=soDelete; window.openComposer=openComposer; window.openSocialConnect=openSocialConnect;
+window.renderTenders=renderTenders; window.tnSetFit=tnSetFit; window.tnSetPortal=tnSetPortal;
 window.renderGroups=renderGroups; window.grpSet=grpSet; window.openGroupForm=openGroupForm; window.groupMenu=groupMenu; window.openGroupLink=openGroupLink; window.copyGroupLink=copyGroupLink;
 
 loadMe();   // جلب بيانات المستخدم المسجّل (ثم تحديث لوحة الرئيسية بالاسم)
@@ -2092,7 +2289,7 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) cloud.p
 (function(){
   const sp = new URLSearchParams(location.search);
   const t = sp.get('tab');
-  if(t && ['home','groups','clients','proposals','tasks','influencers'].includes(t)) switchTab(t);
+  if(t && ['home','groups','clients','proposals','tasks','influencers','social','tenders'].includes(t)) switchTab(t);
   else switchTab('home');
   if(sp.get('go')==='search') openSearch();
 })();

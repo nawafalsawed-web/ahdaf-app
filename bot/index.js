@@ -335,6 +335,52 @@ app.post('/projecto/connect', requireAuth, async (req, res) => {
   catch (e) { res.status(502).json({ ok: false, error: e.message }); }
 });
 
+// ===================== السوشال (Ayrshare) =====================
+const social = require('./social');
+const SOCIAL_DIR = path.join(FILES_DIR, 'social');
+try { fs.mkdirSync(SOCIAL_DIR, { recursive: true }); } catch {}
+const mediaSig = id => crypto.createHmac('sha256', AUTH_SECRET).update('m:' + id).digest('base64url').slice(0, 22);
+const sendErr = (res, e) => res.status(502).json({ ok: false, error: e.message });
+
+app.get('/social/status', requireAuth, async (req, res) => {
+  if (!social.isConnected()) return res.json({ ok: true, connected: false });
+  try { const a = await social.account(); res.json({ ok: true, connected: true, active: a.activeSocialAccounts || [], accounts: a.displayNames || [], hasX: !!social.loadCfg().xKey }); }
+  catch (e) { sendErr(res, e); }
+});
+app.post('/social/connect', requireAuth, async (req, res) => {
+  if (!req.user.admin) return res.status(403).json({ ok: false, error: 'للمشرف فقط' });
+  const { apiKey, xKey, xSecret } = req.body || {};
+  const cur = social.loadCfg();
+  social.saveCfg({ ...cur, ...(apiKey ? { apiKey: apiKey.trim() } : {}), ...(xKey ? { xKey: xKey.trim(), xSecret: String(xSecret || '').trim() } : {}) });
+  try { const a = await social.account(); res.json({ ok: true, active: a.activeSocialAccounts || [] }); }
+  catch (e) { social.saveCfg(cur); sendErr(res, e); }   // مفتاح غلط → رجّع القديم
+});
+
+// رفع ميديا خام (فيديو/صورة) — بدون base64 عشان الريلز الكبيرة
+app.post('/social/media', requireAuth, express.raw({ type: () => true, limit: '500mb' }), (req, res) => {
+  if (!req.body || !req.body.length) return res.status(400).json({ ok: false, error: 'الملف فاضي' });
+  const type = String(req.headers['content-type'] || 'application/octet-stream');
+  const ext = (type.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').replace('quicktime', 'mov').slice(0, 5);
+  const id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + '.' + ext;
+  fs.writeFileSync(path.join(SOCIAL_DIR, id), req.body);
+  const base = social.loadCfg().publicBase || `https://${req.headers['x-forwarded-host'] || req.headers.host}/bot`;
+  res.json({ ok: true, id, url: `${base}/pub/${id}/${mediaSig(id)}`, isVideo: type.startsWith('video/') });
+});
+// رابط عام موقّع — Ayrshare يسحب منه الميديا (بدون دخول، والتوقيع يمنع التخمين)
+app.get('/pub/:id/:sig', (req, res) => {
+  const id = String(req.params.id).replace(/[^a-z0-9.]/gi, '');
+  if (req.params.sig !== mediaSig(id)) return res.status(404).end();
+  res.sendFile(path.join(SOCIAL_DIR, id), err => err && !res.headersSent && res.status(404).end());
+});
+
+app.post('/social/post', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, result: await social.publish(req.body || {}) }); }
+  catch (e) { res.status(502).json({ ok: false, error: e.message, result: e.data }); }
+});
+app.get('/social/history', requireAuth, async (req, res) => { try { res.json({ ok: true, history: await social.history() }); } catch (e) { sendErr(res, e); } });
+app.post('/social/delete', requireAuth, async (req, res) => { try { await social.remove(req.body && req.body.id); res.json({ ok: true }); } catch (e) { sendErr(res, e); } });
+app.get('/social/stats', requireAuth, async (req, res) => { try { res.json({ ok: true, ...(await social.stats(!!req.query.force)) }); } catch (e) { sendErr(res, e); } });
+
 // جدولة المزامنة التلقائية: عند الإقلاع + كل 3 ساعات
 if (projecto.isConnected()) {
   setTimeout(() => projecto.syncProjecto().catch(() => {}), 8000);

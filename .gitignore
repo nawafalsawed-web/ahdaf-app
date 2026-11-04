@@ -13,3 +13,5 @@ bot/node_modules/
 # نظام
 .DS_Store
 *.log
+bot/social.config.json
+bot/social-stats.json

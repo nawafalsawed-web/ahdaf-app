@@ -7,3 +7,5 @@ projecto.config.json
 projecto-data.json
 projecto-shots/
 *.log
+social.config.json
+social-stats.json
